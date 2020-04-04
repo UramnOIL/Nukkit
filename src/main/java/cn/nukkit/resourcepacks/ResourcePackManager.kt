@@ -1,61 +1,47 @@
-package cn.nukkit.resourcepacks;
+package cn.nukkit.resourcepacks
 
-import cn.nukkit.Server;
-import com.google.common.io.Files;
+import cn.nukkit.Server
+import com.google.common.io.Files
+import java.io.File
+import java.util.*
 
-import java.io.File;
-import java.util.*;
+class ResourcePackManager(path: File) {
+	private val resourcePacksById: MutableMap<UUID?, ResourcePack> = HashMap()
+	val resourceStack: Array<ResourcePack>
 
-public class ResourcePackManager {
-    private final Map<UUID, ResourcePack> resourcePacksById = new HashMap<>();
-    private ResourcePack[] resourcePacks;
+	fun getPackById(id: UUID?): ResourcePack? {
+		return resourcePacksById[id]
+	}
 
-    public ResourcePackManager(File path) {
-        if (!path.exists()) {
-            path.mkdirs();
-        } else if (!path.isDirectory()) {
-            throw new IllegalArgumentException(Server.getInstance().getLanguage()
-                    .translateString("nukkit.resources.invalid-path", path.getName()));
-        }
-
-        List<ResourcePack> loadedResourcePacks = new ArrayList<>();
-        for (File pack : path.listFiles()) {
-            try {
-                ResourcePack resourcePack = null;
-
-                if (!pack.isDirectory()) { //directory resource packs temporarily unsupported
-                    switch (Files.getFileExtension(pack.getName())) {
-                        case "zip":
-                        case "mcpack":
-                            resourcePack = new ZippedResourcePack(pack);
-                            break;
-                        default:
-                            Server.getInstance().getLogger().warning(Server.getInstance().getLanguage()
-                                    .translateString("nukkit.resources.unknown-format", pack.getName()));
-                            break;
-                    }
-                }
-
-                if (resourcePack != null) {
-                    loadedResourcePacks.add(resourcePack);
-                    this.resourcePacksById.put(resourcePack.getPackId(), resourcePack);
-                }
-            } catch (IllegalArgumentException e) {
-                Server.getInstance().getLogger().warning(Server.getInstance().getLanguage()
-                        .translateString("nukkit.resources.fail", pack.getName(), e.getMessage()));
-            }
-        }
-
-        this.resourcePacks = loadedResourcePacks.toArray(new ResourcePack[0]);
-        Server.getInstance().getLogger().info(Server.getInstance().getLanguage()
-                .translateString("nukkit.resources.success", String.valueOf(this.resourcePacks.length)));
-    }
-
-    public ResourcePack[] getResourceStack() {
-        return this.resourcePacks;
-    }
-
-    public ResourcePack getPackById(UUID id) {
-        return this.resourcePacksById.get(id);
-    }
+	init {
+		if (!path.exists()) {
+			path.mkdirs()
+		} else require(path.isDirectory) {
+			Server.instance.language
+					.translateString("nukkit.resources.invalid-path", path.name)
+		}
+		val loadedResourcePacks: MutableList<ResourcePack> = ArrayList()
+		for (pack in path.listFiles()) {
+			try {
+				var resourcePack: ResourcePack? = null
+				if (!pack.isDirectory) { //directory resource packs temporarily unsupported
+					when (Files.getFileExtension(pack.name)) {
+						"zip", "mcpack" -> resourcePack = ZippedResourcePack(pack)
+						else -> Server.instance.logger.warning(Server.instance.language
+								.translateString("nukkit.resources.unknown-format", pack.name))
+					}
+				}
+				if (resourcePack != null) {
+					loadedResourcePacks.add(resourcePack)
+					resourcePacksById[resourcePack.packId] = resourcePack
+				}
+			} catch (e: IllegalArgumentException) {
+				Server.instance.logger.warning(Server.instance.language
+						.translateString("nukkit.resources.fail", pack.name, e.message))
+			}
+		}
+		resourceStack = loadedResourcePacks.toTypedArray()
+		Server.instance.logger.info(Server.instance.language
+				.translateString("nukkit.resources.success", resourceStack.size.toString()))
+	}
 }

@@ -1,32 +1,25 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeUnit
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class ServerKiller extends Thread {
+class ServerKiller @JvmOverloads constructor(time: Long, unit: TimeUnit = TimeUnit.SECONDS) : Thread() {
+	val sleepTime: Long
+	override fun run() {
+		try {
+			sleep(sleepTime)
+		} catch (e: InterruptedException) {
+			// ignore
+		}
+		println("\nTook too long to stop, server was killed forcefully!\n")
+		System.exit(1)
+	}
 
-    public final long sleepTime;
-
-    public ServerKiller(long time) {
-        this(time, TimeUnit.SECONDS);
-    }
-
-    public ServerKiller(long time, TimeUnit unit) {
-        this.sleepTime = unit.toMillis(time);
-        this.setName("Server Killer");
-    }
-
-    @Override
-    public void run() {
-        try {
-            sleep(sleepTime);
-        } catch (InterruptedException e) {
-            // ignore
-        }
-        System.out.println("\nTook too long to stop, server was killed forcefully!\n");
-        System.exit(1);
-    }
+	init {
+		sleepTime = unit.toMillis(time)
+		name = "Server Killer"
+	}
 }

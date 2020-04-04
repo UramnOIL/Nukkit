@@ -1,144 +1,99 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import cn.nukkit.Server;
-import cn.nukkit.plugin.Plugin;
-
-import java.io.File;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.List;
+import cn.nukkit.Server
+import cn.nukkit.plugin.Plugin
+import java.io.File
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
+import java.lang.reflect.ParameterizedType
 
 /**
  * SimpleConfig for Nukkit
  * added 11/02/2016 by fromgate
  */
-public abstract class SimpleConfig {
+abstract class SimpleConfig(private val configFile: File) {
 
-    private final File configFile;
+	@JvmOverloads
+	constructor(plugin: Plugin, fileName: String = "config.yml") : this(File(plugin.dataFolder.toString() + File.separator + fileName)) {
+	}
 
-    public SimpleConfig(Plugin plugin) {
-        this(plugin, "config.yml");
-    }
+	@JvmOverloads
+	fun save(async: Boolean = false): Boolean {
+		if (configFile.exists()) try {
+			configFile.createNewFile()
+		} catch (e: Exception) {
+			return false
+		}
+		val cfg = Config(configFile, Config.YAML)
+		for (field in this.javaClass.declaredFields) {
+			if (skipSave(field)) continue
+			val path = getPath(field)
+			try {
+				if (path != null) cfg[path] = field[this]
+			} catch (e: Exception) {
+				return false
+			}
+		}
+		cfg.save(async)
+		return true
+	}
 
-    public SimpleConfig(Plugin plugin, String fileName) {
-        this(new File(plugin.getDataFolder() + File.separator + fileName));
-    }
+	fun load(): Boolean {
+		if (!configFile.exists()) return false
+		val cfg = Config(configFile, Config.YAML)
+		for (field in this.javaClass.declaredFields) {
+			if (field.name == "configFile") continue
+			if (skipSave(field)) continue
+			val path = getPath(field) ?: continue
+			if (path.isEmpty()) continue
+			field.isAccessible = true
+			try {
+				if (field.type == Int::class.javaPrimitiveType || field.type == Int::class.java) field[this] = cfg.getInt(path, field.getInt(this)) else if (field.type == Boolean::class.javaPrimitiveType || field.type == Boolean::class.java) field[this] = cfg.getBoolean(path, field.getBoolean(this)) else if (field.type == Long::class.javaPrimitiveType || field.type == Long::class.java) field[this] = cfg.getLong(path, field.getLong(this)) else if (field.type == Double::class.javaPrimitiveType || field.type == Double::class.java) field[this] = cfg.getDouble(path, field.getDouble(this)) else if (field.type == String::class.java) field[this] = cfg.getString(path, (field[this] as String)) else if (field.type == ConfigSection::class.java) field[this] = cfg.getSection(path) else if (field.type == MutableList::class.java) {
+					val genericFieldType = field.genericType
+					if (genericFieldType is ParameterizedType) {
+						val fieldArgClass = genericFieldType.actualTypeArguments[0] as Class<*>
+						if (fieldArgClass == Int::class.java) field[this] = cfg.getIntegerList(path) else if (fieldArgClass == Boolean::class.java) field[this] = cfg.getBooleanList(path) else if (fieldArgClass == Double::class.java) field[this] = cfg.getDoubleList(path) else if (fieldArgClass == Char::class.java) field[this] = cfg.getCharacterList(path) else if (fieldArgClass == Byte::class.java) field[this] = cfg.getByteList(path) else if (fieldArgClass == Float::class.java) field[this] = cfg.getFloatList(path) else if (fieldArgClass == Short::class.java) field[this] = cfg.getFloatList(path) else if (fieldArgClass == String::class.java) field[this] = cfg.getStringList(path)
+					} else field[this] = cfg.getList(path) // Hell knows what's kind of List was found :)
+				} else throw IllegalStateException("SimpleConfig did not supports class: " + field.type.name + " for config field " + configFile.name)
+			} catch (e: Exception) {
+				Server.instance.logger.logException(e)
+				return false
+			}
+		}
+		return true
+	}
 
-    public SimpleConfig(File file) {
-        this.configFile = file;
-        configFile.getParentFile().mkdirs();
-    }
+	private fun getPath(field: Field): String? {
+		var path: String? = null
+		if (field.isAnnotationPresent(Path::class.java)) {
+			val pathDefine = field.getAnnotation(Path::class.java)
+			path = pathDefine.value()
+		}
+		if (path == null || path.isEmpty()) path = field.name.replace("_".toRegex(), ".")
+		if (Modifier.isFinal(field.modifiers)) return null
+		if (Modifier.isPrivate(field.modifiers)) field.isAccessible = true
+		return path
+	}
 
-    public boolean save() {
-        return save(false);
-    }
+	private fun skipSave(field: Field): Boolean {
+		return if (!field.isAnnotationPresent(Skip::class.java)) false else field.getAnnotation(Skip::class.java).skipSave()
+	}
 
-    public boolean save(boolean async) {
-        if (configFile.exists()) try {
-            configFile.createNewFile();
-        } catch (Exception e) {
-            return false;
-        }
-        Config cfg = new Config(configFile, Config.YAML);
-        for (Field field : this.getClass().getDeclaredFields()) {
-            if (skipSave(field)) continue;
-            String path = getPath(field);
-            try {
-                if (path != null) cfg.set(path, field.get(this));
-            } catch (Exception e) {
-                return false;
-            }
-        }
-        cfg.save(async);
-        return true;
-    }
+	private fun skipLoad(field: Field): Boolean {
+		return if (!field.isAnnotationPresent(Skip::class.java)) false else field.getAnnotation(Skip::class.java).skipLoad()
+	}
 
-    public boolean load() {
-        if (!this.configFile.exists()) return false;
-        Config cfg = new Config(configFile, Config.YAML);
-        for (Field field : this.getClass().getDeclaredFields()) {
-            if (field.getName().equals("configFile")) continue;
-            if (skipSave(field)) continue;
-            String path = getPath(field);
-            if (path == null) continue;
-            if (path.isEmpty()) continue;
-            field.setAccessible(true);
-            try {
-                if (field.getType() == int.class || field.getType() == Integer.class)
-                    field.set(this, cfg.getInt(path, field.getInt(this)));
-                else if (field.getType() == boolean.class || field.getType() == Boolean.class)
-                    field.set(this, cfg.getBoolean(path, field.getBoolean(this)));
-                else if (field.getType() == long.class || field.getType() == Long.class)
-                    field.set(this, cfg.getLong(path, field.getLong(this)));
-                else if (field.getType() == double.class || field.getType() == Double.class)
-                    field.set(this, cfg.getDouble(path, field.getDouble(this)));
-                else if (field.getType() == String.class)
-                    field.set(this, cfg.getString(path, (String) field.get(this)));
-                else if (field.getType() == ConfigSection.class)
-                    field.set(this, cfg.getSection(path));
-                else if (field.getType() == List.class) {
-                    Type genericFieldType = field.getGenericType();
-                    if (genericFieldType instanceof ParameterizedType) {
-                        ParameterizedType aType = (ParameterizedType) genericFieldType;
-                        Class fieldArgClass = (Class) aType.getActualTypeArguments()[0];
-                        if (fieldArgClass == Integer.class) field.set(this, cfg.getIntegerList(path));
-                        else if (fieldArgClass == Boolean.class) field.set(this, cfg.getBooleanList(path));
-                        else if (fieldArgClass == Double.class) field.set(this, cfg.getDoubleList(path));
-                        else if (fieldArgClass == Character.class) field.set(this, cfg.getCharacterList(path));
-                        else if (fieldArgClass == Byte.class) field.set(this, cfg.getByteList(path));
-                        else if (fieldArgClass == Float.class) field.set(this, cfg.getFloatList(path));
-                        else if (fieldArgClass == Short.class) field.set(this, cfg.getFloatList(path));
-                        else if (fieldArgClass == String.class) field.set(this, cfg.getStringList(path));
-                    } else field.set(this, cfg.getList(path)); // Hell knows what's kind of List was found :)
-                } else
-                    throw new IllegalStateException("SimpleConfig did not supports class: " + field.getType().getName() + " for config field " + configFile.getName());
-            } catch (Exception e) {
-                Server.getInstance().getLogger().logException(e);
-                return false;
-            }
-        }
-        return true;
-    }
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(AnnotationTarget.FIELD)
+	annotation class Path(val value: String = "")
 
-    private String getPath(Field field) {
-        String path = null;
-        if (field.isAnnotationPresent(Path.class)) {
-            Path pathDefine = field.getAnnotation(Path.class);
-            path = pathDefine.value();
-        }
-        if (path == null || path.isEmpty()) path = field.getName().replaceAll("_", ".");
-        if (Modifier.isFinal(field.getModifiers())) return null;
-        if (Modifier.isPrivate(field.getModifiers())) field.setAccessible(true);
-        return path;
-    }
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(AnnotationTarget.FIELD)
+	annotation class Skip(val skipSave: Boolean = true, val skipLoad: Boolean = true)
 
-    private boolean skipSave(Field field) {
-        if (!field.isAnnotationPresent(Skip.class)) return false;
-        return field.getAnnotation(Skip.class).skipSave();
-    }
-
-    private boolean skipLoad(Field field) {
-        if (!field.isAnnotationPresent(Skip.class)) return false;
-        return field.getAnnotation(Skip.class).skipLoad();
-    }
-
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
-    public @interface Path {
-        String value() default "";
-    }
-
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
-    public @interface Skip {
-        boolean skipSave() default true;
-
-        boolean skipLoad() default true;
-    }
+	init {
+		configFile.parentFile.mkdirs()
+	}
 }

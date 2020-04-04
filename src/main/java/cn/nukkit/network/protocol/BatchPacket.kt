@@ -1,39 +1,44 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.network.CacheEncapsulatedPacket;
+import cn.nukkit.network.CacheEncapsulatedPacket
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class BatchPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.BATCH_PACKET;
+class BatchPacket : DataPacket() {
+	var payload: ByteArray?
 
-    public byte[] payload;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun decode() {
+		payload = this.get()
+	}
 
-    @Override
-    public void decode() {
-        this.payload = this.get();
-    }
+	@Override
+	override fun encode() {
+	}
 
-    @Override
-    public void encode() {
+	fun trim() {
+		setBuffer(null)
+		if (encapsulatedPacket != null) {
+			payload = null
+			if (encapsulatedPacket is CacheEncapsulatedPacket && !encapsulatedPacket.hasSplit) {
+				val cached: CacheEncapsulatedPacket? = encapsulatedPacket
+				if (cached!!.internalData != null) cached.buffer = null
+			}
+		}
+	}
 
-    }
-
-    public void trim() {
-        setBuffer(null);
-        if (encapsulatedPacket != null) {
-            payload = null;
-            if (encapsulatedPacket instanceof CacheEncapsulatedPacket && !encapsulatedPacket.hasSplit) {
-                CacheEncapsulatedPacket cached = (CacheEncapsulatedPacket) encapsulatedPacket;
-                if (cached.internalData != null) cached.buffer = null;
-            }
-        }
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.BATCH_PACKET
+	}
 }

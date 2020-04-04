@@ -1,45 +1,51 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.BlockVector3;
-import lombok.ToString;
+import cn.nukkit.math.BlockVector3
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class ContainerOpenPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.CONTAINER_OPEN_PACKET;
+class ContainerOpenPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var windowId = 0
+	var type = 0
+	var x = 0
+	var y = 0
+	var z = 0
+	var entityId: Long = -1
 
-    public int windowId;
-    public int type;
-    public int x;
-    public int y;
-    public int z;
-    public long entityId = -1;
+	@Override
+	override fun decode() {
+		windowId = this.getByte()
+		type = this.getByte()
+		val v: BlockVector3 = this.getBlockVector3()
+		x = v.x
+		y = v.y
+		z = v.z
+		entityId = this.getEntityUniqueId()
+	}
 
-    @Override
-    public void decode() {
-        this.windowId = this.getByte();
-        this.type = this.getByte();
-        BlockVector3 v = this.getBlockVector3();
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        this.entityId = this.getEntityUniqueId();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putByte(windowId.toByte())
+		this.putByte(type.toByte())
+		this.putBlockVector3(x, y, z)
+		this.putEntityUniqueId(entityId)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putByte((byte) this.windowId);
-        this.putByte((byte) this.type);
-        this.putBlockVector3(this.x, this.y, this.z);
-        this.putEntityUniqueId(this.entityId);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.CONTAINER_OPEN_PACKET
+	}
 }

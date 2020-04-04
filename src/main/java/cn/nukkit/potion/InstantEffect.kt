@@ -1,15 +1,10 @@
-package cn.nukkit.potion;
+package cn.nukkit.potion
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class InstantEffect extends Effect {
-    public InstantEffect(int id, String name, int r, int g, int b) {
-        super(id, name, r, g, b);
-    }
-
-    public InstantEffect(int id, String name, int r, int g, int b, boolean isBad) {
-        super(id, name, r, g, b, isBad);
-    }
+class InstantEffect : Effect {
+	constructor(id: Int, name: String, r: Int, g: Int, b: Int) : super(id, name, r, g, b) {}
+	constructor(id: Int, name: String, r: Int, g: Int, b: Int, isBad: Boolean) : super(id, name, r, g, b, isBad) {}
 }

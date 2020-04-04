@@ -1,41 +1,37 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import kotlin.jvm.Throws
 
-import java.io.IOException;
+class EndTag : Tag(null) {
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream?) {
+	}
 
-public class EndTag extends Tag {
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream?) {
+	}
 
-    public EndTag() {
-        super(null);
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_End
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-    }
+	@Override
+	override fun toString(): String {
+		return "EndTag"
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-    }
+	@Override
+	override fun copy(): Tag {
+		return EndTag()
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_End;
-    }
-
-    @Override
-    public String toString() {
-        return "EndTag";
-    }
-
-    @Override
-    public Tag copy() {
-        return new EndTag();
-    }
-
-    @Override
-    public Object parseValue() {
-        return null;
-    }
+	@Override
+	override fun parseValue(): Object? {
+		return null
+	}
 }

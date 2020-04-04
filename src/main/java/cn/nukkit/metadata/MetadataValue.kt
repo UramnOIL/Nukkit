@@ -1,27 +1,23 @@
-package cn.nukkit.metadata;
+package cn.nukkit.metadata
 
-import cn.nukkit.plugin.Plugin;
-
-import java.lang.ref.WeakReference;
+import cn.nukkit.plugin.Plugin
+import java.lang.ref.WeakReference
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public abstract class MetadataValue {
+abstract class MetadataValue protected constructor(owningPlugin: Plugin?) {
+	protected val owningPlugin: WeakReference<Plugin?>?
+	fun getOwningPlugin(): Plugin? {
+		return owningPlugin.get()
+	}
 
-    protected final WeakReference<Plugin> owningPlugin;
+	abstract fun value(): Object?
+	abstract fun invalidate()
 
-    protected MetadataValue(Plugin owningPlugin) {
-        this.owningPlugin = new WeakReference<>(owningPlugin);
-    }
-
-    public Plugin getOwningPlugin() {
-        return this.owningPlugin.get();
-    }
-
-    public abstract Object value();
-
-    public abstract void invalidate();
-
+	init {
+		this.owningPlugin = WeakReference(owningPlugin)
+	}
 }

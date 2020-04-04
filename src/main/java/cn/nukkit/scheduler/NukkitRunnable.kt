@@ -1,76 +1,88 @@
-package cn.nukkit.scheduler;
+package cn.nukkit.scheduler
 
-import cn.nukkit.Server;
-import cn.nukkit.plugin.Plugin;
+import cn.nukkit.Server
+import cn.nukkit.plugin.Plugin
 
 /**
  * This class is provided as an easy way to handle scheduling tasks.
  */
-public abstract class NukkitRunnable implements Runnable {
-    private TaskHandler taskHandler;
+abstract class NukkitRunnable : Runnable {
+	private var taskHandler: TaskHandler? = null
 
-    /**
-     * Attempts to cancel this task.
-     *
-     * @throws IllegalStateException if task was not scheduled yet
-     */
-    public synchronized void cancel() throws IllegalStateException {
-        taskHandler.cancel();
-    }
+	/**
+	 * Attempts to cancel this task.
+	 *
+	 * @throws IllegalStateException if task was not scheduled yet
+	 */
+	@Synchronized
+	@Throws(IllegalStateException::class)
+	fun cancel() {
+		taskHandler!!.cancel()
+	}
 
-    public synchronized Runnable runTask(Plugin plugin) throws IllegalArgumentException, IllegalStateException {
-        checkState();
-        this.taskHandler = Server.getInstance().getScheduler().scheduleTask(plugin, this);
-        return taskHandler.getTask();
-    }
+	@Synchronized
+	@Throws(IllegalArgumentException::class, IllegalStateException::class)
+	fun runTask(plugin: Plugin?): Runnable? {
+		checkState()
+		taskHandler = Server.instance.scheduler.scheduleTask(plugin, this)
+		return taskHandler.getTask()
+	}
 
-    public synchronized Runnable runTaskAsynchronously(Plugin plugin) throws IllegalArgumentException, IllegalStateException {
-        checkState();
-        this.taskHandler = Server.getInstance().getScheduler().scheduleTask(plugin, this, true);
-        return taskHandler.getTask();
-    }
+	@Synchronized
+	@Throws(IllegalArgumentException::class, IllegalStateException::class)
+	fun runTaskAsynchronously(plugin: Plugin?): Runnable? {
+		checkState()
+		taskHandler = Server.instance.scheduler.scheduleTask(plugin, this, true)
+		return taskHandler.getTask()
+	}
 
-    public synchronized Runnable runTaskLater(Plugin plugin, int delay) throws IllegalArgumentException, IllegalStateException {
-        checkState();
-        this.taskHandler = Server.getInstance().getScheduler().scheduleDelayedTask(plugin, this, delay);
-        return taskHandler.getTask();
-    }
+	@Synchronized
+	@Throws(IllegalArgumentException::class, IllegalStateException::class)
+	fun runTaskLater(plugin: Plugin?, delay: Int): Runnable? {
+		checkState()
+		taskHandler = Server.instance.scheduler.scheduleDelayedTask(plugin, this, delay)
+		return taskHandler.getTask()
+	}
 
-    public synchronized Runnable runTaskLaterAsynchronously(Plugin plugin, int delay) throws IllegalArgumentException, IllegalStateException {
-        checkState();
-        this.taskHandler = Server.getInstance().getScheduler().scheduleDelayedTask(plugin, this, delay, true);
-        return taskHandler.getTask();
-    }
+	@Synchronized
+	@Throws(IllegalArgumentException::class, IllegalStateException::class)
+	fun runTaskLaterAsynchronously(plugin: Plugin?, delay: Int): Runnable? {
+		checkState()
+		taskHandler = Server.instance.scheduler.scheduleDelayedTask(plugin, this, delay, true)
+		return taskHandler.getTask()
+	}
 
-    public synchronized Runnable runTaskTimer(Plugin plugin, int delay, int period) throws IllegalArgumentException, IllegalStateException {
-        checkState();
-        this.taskHandler = Server.getInstance().getScheduler().scheduleDelayedRepeatingTask(plugin, this, delay, period);
-        return taskHandler.getTask();
-    }
+	@Synchronized
+	@Throws(IllegalArgumentException::class, IllegalStateException::class)
+	fun runTaskTimer(plugin: Plugin?, delay: Int, period: Int): Runnable? {
+		checkState()
+		taskHandler = Server.instance.scheduler.scheduleDelayedRepeatingTask(plugin, this, delay, period)
+		return taskHandler.getTask()
+	}
 
-    public synchronized Runnable runTaskTimerAsynchronously(Plugin plugin, int delay, int period) throws IllegalArgumentException, IllegalStateException {
-        checkState();
-        this.taskHandler = Server.getInstance().getScheduler().scheduleDelayedRepeatingTask(plugin, this, delay, period, true);
-        return taskHandler.getTask();
-    }
+	@Synchronized
+	@Throws(IllegalArgumentException::class, IllegalStateException::class)
+	fun runTaskTimerAsynchronously(plugin: Plugin?, delay: Int, period: Int): Runnable? {
+		checkState()
+		taskHandler = Server.instance.scheduler.scheduleDelayedRepeatingTask(plugin, this, delay, period, true)
+		return taskHandler.getTask()
+	}
 
-    /**
-     * Gets the task id for this runnable.
-     *
-     * @return the task id that this runnable was scheduled as
-     * @throws IllegalStateException if task was not scheduled yet
-     */
-    public synchronized int getTaskId() throws IllegalStateException {
-        if (taskHandler == null) {
-            throw new IllegalStateException("Not scheduled yet");
-        }
-        final int id = taskHandler.getTaskId();
-        return id;
-    }
+	/**
+	 * Gets the task id for this runnable.
+	 *
+	 * @return the task id that this runnable was scheduled as
+	 * @throws IllegalStateException if task was not scheduled yet
+	 */
+	@get:Throws(IllegalStateException::class)
+	@get:Synchronized
+	val taskId: Int
+		get() {
+			checkNotNull(taskHandler) { "Not scheduled yet" }
+			return taskHandler.getTaskId()
+		}
 
-    private void checkState() {
-        if (taskHandler != null) {
-            throw new IllegalStateException("Already scheduled as " + taskHandler.getTaskId());
-        }
-    }
+	private fun checkState() {
+		check(taskHandler == null) { "Already scheduled as " + taskHandler.getTaskId() }
+	}
 }

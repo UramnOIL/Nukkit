@@ -1,30 +1,36 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class SetPlayerGameTypePacket extends DataPacket {
-    public final static byte NETWORK_ID = ProtocolInfo.SET_PLAYER_GAME_TYPE_PACKET;
+class SetPlayerGameTypePacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var gamemode = 0
 
-    public int gamemode;
+	@Override
+	override fun decode() {
+		gamemode = this.getVarInt()
+	}
 
-    @Override
-    public void decode() {
-        this.gamemode = this.getVarInt();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarInt(gamemode)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarInt(this.gamemode);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SET_PLAYER_GAME_TYPE_PACKET
+	}
 }

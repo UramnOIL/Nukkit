@@ -1,299 +1,301 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.Vector3f;
-import lombok.ToString;
+import cn.nukkit.math.Vector3f
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class LevelSoundEventPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.LEVEL_SOUND_EVENT_PACKET;
+class LevelSoundEventPacket : DataPacket() {
+	var sound = 0
+	var x = 0f
+	var y = 0f
+	var z = 0f
+	var extraData = -1
+	var entityIdentifier: String? = null
+	var isBabyMob = false
+	var isGlobal = false
 
-    public static final int SOUND_ITEM_USE_ON = 0;
-    public static final int SOUND_HIT = 1;
-    public static final int SOUND_STEP = 2;
-    public static final int SOUND_FLY = 3;
-    public static final int SOUND_JUMP = 4;
-    public static final int SOUND_BREAK = 5;
-    public static final int SOUND_PLACE = 6;
-    public static final int SOUND_HEAVY_STEP = 7;
-    public static final int SOUND_GALLOP = 8;
-    public static final int SOUND_FALL = 9;
-    public static final int SOUND_AMBIENT = 10;
-    public static final int SOUND_AMBIENT_BABY = 11;
-    public static final int SOUND_AMBIENT_IN_WATER = 12;
-    public static final int SOUND_BREATHE = 13;
-    public static final int SOUND_DEATH = 14;
-    public static final int SOUND_DEATH_IN_WATER = 15;
-    public static final int SOUND_DEATH_TO_ZOMBIE = 16;
-    public static final int SOUND_HURT = 17;
-    public static final int SOUND_HURT_IN_WATER = 18;
-    public static final int SOUND_MAD = 19;
-    public static final int SOUND_BOOST = 20;
-    public static final int SOUND_BOW = 21;
-    public static final int SOUND_SQUISH_BIG = 22;
-    public static final int SOUND_SQUISH_SMALL = 23;
-    public static final int SOUND_FALL_BIG = 24;
-    public static final int SOUND_FALL_SMALL = 25;
-    public static final int SOUND_SPLASH = 26;
-    public static final int SOUND_FIZZ = 27;
-    public static final int SOUND_FLAP = 28;
-    public static final int SOUND_SWIM = 29;
-    public static final int SOUND_DRINK = 30;
-    public static final int SOUND_EAT = 31;
-    public static final int SOUND_TAKEOFF = 32;
-    public static final int SOUND_SHAKE = 33;
-    public static final int SOUND_PLOP = 34;
-    public static final int SOUND_LAND = 35;
-    public static final int SOUND_SADDLE = 36;
-    public static final int SOUND_ARMOR = 37;
-    public static final int SOUND_MOB_ARMOR_STAND_PLACE = 38;
-    public static final int SOUND_ADD_CHEST = 39;
-    public static final int SOUND_THROW = 40;
-    public static final int SOUND_ATTACK = 41;
-    public static final int SOUND_ATTACK_NODAMAGE = 42;
-    public static final int SOUND_ATTACK_STRONG = 43;
-    public static final int SOUND_WARN = 44;
-    public static final int SOUND_SHEAR = 45;
-    public static final int SOUND_MILK = 46;
-    public static final int SOUND_THUNDER = 47;
-    public static final int SOUND_EXPLODE = 48;
-    public static final int SOUND_FIRE = 49;
-    public static final int SOUND_IGNITE = 50;
-    public static final int SOUND_FUSE = 51;
-    public static final int SOUND_STARE = 52;
-    public static final int SOUND_SPAWN = 53;
-    public static final int SOUND_SHOOT = 54;
-    public static final int SOUND_BREAK_BLOCK = 55;
-    public static final int SOUND_LAUNCH = 56;
-    public static final int SOUND_BLAST = 57;
-    public static final int SOUND_LARGE_BLAST = 58;
-    public static final int SOUND_TWINKLE = 59;
-    public static final int SOUND_REMEDY = 60;
-    public static final int SOUND_UNFECT = 61;
-    public static final int SOUND_LEVELUP = 62;
-    public static final int SOUND_BOW_HIT = 63;
-    public static final int SOUND_BULLET_HIT = 64;
-    public static final int SOUND_EXTINGUISH_FIRE = 65;
-    public static final int SOUND_ITEM_FIZZ = 66;
-    public static final int SOUND_CHEST_OPEN = 67;
-    public static final int SOUND_CHEST_CLOSED = 68;
-    public static final int SOUND_SHULKERBOX_OPEN = 69;
-    public static final int SOUND_SHULKERBOX_CLOSED = 70;
-    public static final int SOUND_ENDERCHEST_OPEN = 71;
-    public static final int SOUND_ENDERCHEST_CLOSED = 72;
-    public static final int SOUND_POWER_ON = 73;
-    public static final int SOUND_POWER_OFF = 74;
-    public static final int SOUND_ATTACH = 75;
-    public static final int SOUND_DETACH = 76;
-    public static final int SOUND_DENY = 77;
-    public static final int SOUND_TRIPOD = 78;
-    public static final int SOUND_POP = 79;
-    public static final int SOUND_DROP_SLOT = 80;
-    public static final int SOUND_NOTE = 81;
-    public static final int SOUND_THORNS = 82;
-    public static final int SOUND_PISTON_IN = 83;
-    public static final int SOUND_PISTON_OUT = 84;
-    public static final int SOUND_PORTAL = 85;
-    public static final int SOUND_WATER = 86;
-    public static final int SOUND_LAVA_POP = 87;
-    public static final int SOUND_LAVA = 88;
-    public static final int SOUND_BURP = 89;
-    public static final int SOUND_BUCKET_FILL_WATER = 90;
-    public static final int SOUND_BUCKET_FILL_LAVA = 91;
-    public static final int SOUND_BUCKET_EMPTY_WATER = 92;
-    public static final int SOUND_BUCKET_EMPTY_LAVA = 93;
-    public static final int SOUND_ARMOR_EQUIP_CHAIN = 94;
-    public static final int SOUND_ARMOR_EQUIP_DIAMOND = 95;
-    public static final int SOUND_ARMOR_EQUIP_GENERIC = 96;
-    public static final int SOUND_ARMOR_EQUIP_GOLD = 97;
-    public static final int SOUND_ARMOR_EQUIP_IRON = 98;
-    public static final int SOUND_ARMOR_EQUIP_LEATHER = 99;
-    public static final int SOUND_ARMOR_EQUIP_ELYTRA = 100;
-    public static final int SOUND_RECORD_13 = 101;
-    public static final int SOUND_RECORD_CAT = 102;
-    public static final int SOUND_RECORD_BLOCKS = 103;
-    public static final int SOUND_RECORD_CHIRP = 104;
-    public static final int SOUND_RECORD_FAR = 105;
-    public static final int SOUND_RECORD_MALL = 106;
-    public static final int SOUND_RECORD_MELLOHI = 107;
-    public static final int SOUND_RECORD_STAL = 108;
-    public static final int SOUND_RECORD_STRAD = 109;
-    public static final int SOUND_RECORD_WARD = 110;
-    public static final int SOUND_RECORD_11 = 111;
-    public static final int SOUND_RECORD_WAIT = 112;
-    public static final int SOUND_STOP_RECORD = 113; //Not really a sound
-    public static final int SOUND_GUARDIAN_FLOP = 114;
-    public static final int SOUND_ELDERGUARDIAN_CURSE = 115;
-    public static final int SOUND_MOB_WARNING = 116;
-    public static final int SOUND_MOB_WARNING_BABY = 117;
-    public static final int SOUND_TELEPORT = 118;
-    public static final int SOUND_SHULKER_OPEN = 119;
-    public static final int SOUND_SHULKER_CLOSE = 120;
-    public static final int SOUND_HAGGLE = 121;
-    public static final int SOUND_HAGGLE_YES = 122;
-    public static final int SOUND_HAGGLE_NO = 123;
-    public static final int SOUND_HAGGLE_IDLE = 124;
-    public static final int SOUND_CHORUSGROW = 125;
-    public static final int SOUND_CHORUSDEATH = 126;
-    public static final int SOUND_GLASS = 127;
-    public static final int SOUND_POTION_BREWED = 128;
-    public static final int SOUND_CAST_SPELL = 129;
-    public static final int SOUND_PREPARE_ATTACK = 130;
-    public static final int SOUND_PREPARE_SUMMON = 131;
-    public static final int SOUND_PREPARE_WOLOLO = 132;
-    public static final int SOUND_FANG = 133;
-    public static final int SOUND_CHARGE = 134;
-    public static final int SOUND_CAMERA_TAKE_PICTURE = 135;
-    public static final int SOUND_LEASHKNOT_PLACE = 136;
-    public static final int SOUND_LEASHKNOT_BREAK = 137;
-    public static final int SOUND_GROWL = 138;
-    public static final int SOUND_WHINE = 139;
-    public static final int SOUND_PANT = 140;
-    public static final int SOUND_PURR = 141;
-    public static final int SOUND_PURREOW = 142;
-    public static final int SOUND_DEATH_MIN_VOLUME = 143;
-    public static final int SOUND_DEATH_MID_VOLUME = 144;
-    public static final int SOUND_IMITATE_BLAZE = 145;
-    public static final int SOUND_IMITATE_CAVE_SPIDER = 146;
-    public static final int SOUND_IMITATE_CREEPER = 147;
-    public static final int SOUND_IMITATE_ELDER_GUARDIAN = 148;
-    public static final int SOUND_IMITATE_ENDER_DRAGON = 149;
-    public static final int SOUND_IMITATE_ENDERMAN = 150;
+	@Override
+	override fun decode() {
+		sound = this.getUnsignedVarInt() as Int
+		val v: Vector3f = this.getVector3f()
+		x = v.x
+		y = v.y
+		z = v.z
+		extraData = this.getVarInt()
+		entityIdentifier = this.getString()
+		isBabyMob = this.getBoolean()
+		isGlobal = this.getBoolean()
+	}
 
-    public static final int SOUND_IMITATE_EVOCATION_ILLAGER = 152;
-    public static final int SOUND_IMITATE_GHAST = 153;
-    public static final int SOUND_IMITATE_HUSK = 154;
-    public static final int SOUND_IMITATE_ILLUSION_ILLAGER = 155;
-    public static final int SOUND_IMITATE_MAGMA_CUBE = 156;
-    public static final int SOUND_IMITATE_POLAR_BEAR = 157;
-    public static final int SOUND_IMITATE_SHULKER = 158;
-    public static final int SOUND_IMITATE_SILVERFISH = 159;
-    public static final int SOUND_IMITATE_SKELETON = 160;
-    public static final int SOUND_IMITATE_SLIME = 161;
-    public static final int SOUND_IMITATE_SPIDER = 162;
-    public static final int SOUND_IMITATE_STRAY = 163;
-    public static final int SOUND_IMITATE_VEX = 164;
-    public static final int SOUND_IMITATE_VINDICATION_ILLAGER = 165;
-    public static final int SOUND_IMITATE_WITCH = 166;
-    public static final int SOUND_IMITATE_WITHER = 167;
-    public static final int SOUND_IMITATE_WITHER_SKELETON = 168;
-    public static final int SOUND_IMITATE_WOLF = 169;
-    public static final int SOUND_IMITATE_ZOMBIE = 170;
-    public static final int SOUND_IMITATE_ZOMBIE_PIGMAN = 171;
-    public static final int SOUND_IMITATE_ZOMBIE_VILLAGER = 172;
-    public static final int SOUND_BLOCK_END_PORTAL_FRAME_FILL = 173;
-    public static final int SOUND_BLOCK_END_PORTAL_SPAWN = 174;
-    public static final int SOUND_RANDOM_ANVIL_USE = 175;
-    public static final int SOUND_BOTTLE_DRAGONBREATH = 176;
-    public static final int SOUND_PORTAL_TRAVEL = 177;
-    public static final int SOUND_ITEM_TRIDENT_HIT = 178;
-    public static final int SOUND_ITEM_TRIDENT_RETURN = 179;
-    public static final int SOUND_ITEM_TRIDENT_RIPTIDE_1 = 180;
-    public static final int SOUND_ITEM_TRIDENT_RIPTIDE_2 = 181;
-    public static final int SOUND_ITEM_TRIDENT_RIPTIDE_3 = 182;
-    public static final int SOUND_ITEM_TRIDENT_THROW = 183;
-    public static final int SOUND_ITEM_TRIDENT_THUNDER = 184;
-    public static final int SOUND_ITEM_TRIDENT_HIT_GROUND = 185;
-    public static final int SOUND_DEFAULT = 186;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putUnsignedVarInt(sound)
+		this.putVector3f(x, y, z)
+		this.putVarInt(extraData)
+		this.putString(entityIdentifier)
+		this.putBoolean(isBabyMob)
+		this.putBoolean(isGlobal)
+	}
 
-    public static final int SOUND_ELEMCONSTRUCT_OPEN = 188;
-    public static final int SOUND_ICEBOMB_HIT = 189;
-    public static final int SOUND_BALLOONPOP = 190;
-    public static final int SOUND_LT_REACTION_ICEBOMB = 191;
-    public static final int SOUND_LT_REACTION_BLEACH = 192;
-    public static final int SOUND_LT_REACTION_EPASTE = 193;
-    public static final int SOUND_LT_REACTION_EPASTE2 = 194;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public static final int SOUND_LT_REACTION_FERTILIZER = 199;
-    public static final int SOUND_LT_REACTION_FIREBALL = 200;
-    public static final int SOUND_LT_REACTION_MGSALT = 201;
-    public static final int SOUND_LT_REACTION_MISCFIRE = 202;
-    public static final int SOUND_LT_REACTION_FIRE = 203;
-    public static final int SOUND_LT_REACTION_MISCEXPLOSION = 204;
-    public static final int SOUND_LT_REACTION_MISCMYSTICAL = 205;
-    public static final int SOUND_LT_REACTION_MISCMYSTICAL2 = 206;
-    public static final int SOUND_LT_REACTION_PRODUCT = 207;
-    public static final int SOUND_SPARKLER_USE = 208;
-    public static final int SOUND_GLOWSTICK_USE = 209;
-    public static final int SOUND_SPARKLER_ACTIVE = 210;
-    public static final int SOUND_CONVERT_TO_DROWNED = 211;
-    public static final int SOUND_BUCKET_FILL_FISH = 212;
-    public static final int SOUND_BUCKET_EMPTY_FISH = 213;
-    public static final int SOUND_BUBBLE_UP = 214;
-    public static final int SOUND_BUBBLE_DOWN = 215;
-    public static final int SOUND_BUBBLE_POP = 216;
-    public static final int SOUND_BUBBLE_UPINSIDE = 217;
-    public static final int SOUND_BUBBLE_DOWNINSIDE = 218;
-    public static final int SOUND_HURT_BABY = 219;
-    public static final int SOUND_DEATH_BABY = 220;
-    public static final int SOUND_STEP_BABY = 221;
-    public static final int SOUND_BORN = 223;
-    public static final int SOUND_BLOCK_TURTLE_EGG_BREAK = 224;
-    public static final int SOUND_BLOCK_TURTLE_EGG_CRACK = 225;
-    public static final int SOUND_BLOCK_TURTLE_EGG_HATCH = 226;
-    public static final int SOUND_BLOCK_TURTLE_EGG_ATTACK = 228;
-    public static final int SOUND_BEACON_ACTIVATE = 229;
-    public static final int SOUND_BEACON_AMBIENT = 230;
-    public static final int SOUND_BEACON_DEACTIVATE = 231;
-    public static final int SOUND_BEACON_POWER = 232;
-    public static final int SOUND_CONDUIT_ACTIVATE = 233;
-    public static final int SOUND_CONDUIT_AMBIENT = 234;
-    public static final int SOUND_CONDUIT_ATTACK = 235;
-    public static final int SOUND_CONDUIT_DEACTIVATE = 236;
-    public static final int SOUND_CONDUIT_SHORT = 237;
-    public static final int SOUND_SWOOP = 238;
-    public static final int SOUND_BLOCK_BAMBOO_SAPLING_PLACE = 239;
-    public static final int SOUND_PRESNEEZE = 240;
-    public static final int SOUND_SNEEZE = 241;
-    public static final int SOUND_AMBIENT_TAME = 242;
-    public static final int SOUND_SCARED = 243;
-    public static final int SOUND_BLOCK_SCAFFOLDING_CLIMB = 244;
-    public static final int SOUND_CROSSBOW_LOADING_START = 245;
-    public static final int SOUND_CROSSBOW_LOADING_MIDDLE = 246;
-    public static final int SOUND_CROSSBOW_LOADING_END = 247;
-    public static final int SOUND_CROSSBOW_SHOOT = 248;
-    public static final int SOUND_CROSSBOW_QUICK_CHARGE_START = 249;
-    public static final int SOUND_CROSSBOW_QUICK_CHARGE_MIDDLE = 250;
-    public static final int SOUND_CROSSBOW_QUICK_CHARGE_END = 251;
-    public static final int SOUND_AMBIENT_AGGRESSIVE = 252;
-    public static final int SOUND_AMBIENT_WORRIED = 253;
-    public static final int SOUND_CANT_BREED = 254;
-    public static final int SOUND_UNDEFINED = 255;
-
-    public int sound;
-    public float x;
-    public float y;
-    public float z;
-    public int extraData = -1;
-    public String entityIdentifier;
-    public boolean isBabyMob;
-    public boolean isGlobal;
-
-    @Override
-    public void decode() {
-        this.sound = (int) this.getUnsignedVarInt();
-        Vector3f v = this.getVector3f();
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        this.extraData = this.getVarInt();
-        this.entityIdentifier = this.getString();
-        this.isBabyMob = this.getBoolean();
-        this.isGlobal = this.getBoolean();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putUnsignedVarInt(this.sound);
-        this.putVector3f(this.x, this.y, this.z);
-        this.putVarInt(this.extraData);
-        this.putString(this.entityIdentifier);
-        this.putBoolean(this.isBabyMob);
-        this.putBoolean(this.isGlobal);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.LEVEL_SOUND_EVENT_PACKET
+		const val SOUND_ITEM_USE_ON = 0
+		const val SOUND_HIT = 1
+		const val SOUND_STEP = 2
+		const val SOUND_FLY = 3
+		const val SOUND_JUMP = 4
+		const val SOUND_BREAK = 5
+		const val SOUND_PLACE = 6
+		const val SOUND_HEAVY_STEP = 7
+		const val SOUND_GALLOP = 8
+		const val SOUND_FALL = 9
+		const val SOUND_AMBIENT = 10
+		const val SOUND_AMBIENT_BABY = 11
+		const val SOUND_AMBIENT_IN_WATER = 12
+		const val SOUND_BREATHE = 13
+		const val SOUND_DEATH = 14
+		const val SOUND_DEATH_IN_WATER = 15
+		const val SOUND_DEATH_TO_ZOMBIE = 16
+		const val SOUND_HURT = 17
+		const val SOUND_HURT_IN_WATER = 18
+		const val SOUND_MAD = 19
+		const val SOUND_BOOST = 20
+		const val SOUND_BOW = 21
+		const val SOUND_SQUISH_BIG = 22
+		const val SOUND_SQUISH_SMALL = 23
+		const val SOUND_FALL_BIG = 24
+		const val SOUND_FALL_SMALL = 25
+		const val SOUND_SPLASH = 26
+		const val SOUND_FIZZ = 27
+		const val SOUND_FLAP = 28
+		const val SOUND_SWIM = 29
+		const val SOUND_DRINK = 30
+		const val SOUND_EAT = 31
+		const val SOUND_TAKEOFF = 32
+		const val SOUND_SHAKE = 33
+		const val SOUND_PLOP = 34
+		const val SOUND_LAND = 35
+		const val SOUND_SADDLE = 36
+		const val SOUND_ARMOR = 37
+		const val SOUND_MOB_ARMOR_STAND_PLACE = 38
+		const val SOUND_ADD_CHEST = 39
+		const val SOUND_THROW = 40
+		const val SOUND_ATTACK = 41
+		const val SOUND_ATTACK_NODAMAGE = 42
+		const val SOUND_ATTACK_STRONG = 43
+		const val SOUND_WARN = 44
+		const val SOUND_SHEAR = 45
+		const val SOUND_MILK = 46
+		const val SOUND_THUNDER = 47
+		const val SOUND_EXPLODE = 48
+		const val SOUND_FIRE = 49
+		const val SOUND_IGNITE = 50
+		const val SOUND_FUSE = 51
+		const val SOUND_STARE = 52
+		const val SOUND_SPAWN = 53
+		const val SOUND_SHOOT = 54
+		const val SOUND_BREAK_BLOCK = 55
+		const val SOUND_LAUNCH = 56
+		const val SOUND_BLAST = 57
+		const val SOUND_LARGE_BLAST = 58
+		const val SOUND_TWINKLE = 59
+		const val SOUND_REMEDY = 60
+		const val SOUND_UNFECT = 61
+		const val SOUND_LEVELUP = 62
+		const val SOUND_BOW_HIT = 63
+		const val SOUND_BULLET_HIT = 64
+		const val SOUND_EXTINGUISH_FIRE = 65
+		const val SOUND_ITEM_FIZZ = 66
+		const val SOUND_CHEST_OPEN = 67
+		const val SOUND_CHEST_CLOSED = 68
+		const val SOUND_SHULKERBOX_OPEN = 69
+		const val SOUND_SHULKERBOX_CLOSED = 70
+		const val SOUND_ENDERCHEST_OPEN = 71
+		const val SOUND_ENDERCHEST_CLOSED = 72
+		const val SOUND_POWER_ON = 73
+		const val SOUND_POWER_OFF = 74
+		const val SOUND_ATTACH = 75
+		const val SOUND_DETACH = 76
+		const val SOUND_DENY = 77
+		const val SOUND_TRIPOD = 78
+		const val SOUND_POP = 79
+		const val SOUND_DROP_SLOT = 80
+		const val SOUND_NOTE = 81
+		const val SOUND_THORNS = 82
+		const val SOUND_PISTON_IN = 83
+		const val SOUND_PISTON_OUT = 84
+		const val SOUND_PORTAL = 85
+		const val SOUND_WATER = 86
+		const val SOUND_LAVA_POP = 87
+		const val SOUND_LAVA = 88
+		const val SOUND_BURP = 89
+		const val SOUND_BUCKET_FILL_WATER = 90
+		const val SOUND_BUCKET_FILL_LAVA = 91
+		const val SOUND_BUCKET_EMPTY_WATER = 92
+		const val SOUND_BUCKET_EMPTY_LAVA = 93
+		const val SOUND_ARMOR_EQUIP_CHAIN = 94
+		const val SOUND_ARMOR_EQUIP_DIAMOND = 95
+		const val SOUND_ARMOR_EQUIP_GENERIC = 96
+		const val SOUND_ARMOR_EQUIP_GOLD = 97
+		const val SOUND_ARMOR_EQUIP_IRON = 98
+		const val SOUND_ARMOR_EQUIP_LEATHER = 99
+		const val SOUND_ARMOR_EQUIP_ELYTRA = 100
+		const val SOUND_RECORD_13 = 101
+		const val SOUND_RECORD_CAT = 102
+		const val SOUND_RECORD_BLOCKS = 103
+		const val SOUND_RECORD_CHIRP = 104
+		const val SOUND_RECORD_FAR = 105
+		const val SOUND_RECORD_MALL = 106
+		const val SOUND_RECORD_MELLOHI = 107
+		const val SOUND_RECORD_STAL = 108
+		const val SOUND_RECORD_STRAD = 109
+		const val SOUND_RECORD_WARD = 110
+		const val SOUND_RECORD_11 = 111
+		const val SOUND_RECORD_WAIT = 112
+		const val SOUND_STOP_RECORD = 113 //Not really a sound
+		const val SOUND_GUARDIAN_FLOP = 114
+		const val SOUND_ELDERGUARDIAN_CURSE = 115
+		const val SOUND_MOB_WARNING = 116
+		const val SOUND_MOB_WARNING_BABY = 117
+		const val SOUND_TELEPORT = 118
+		const val SOUND_SHULKER_OPEN = 119
+		const val SOUND_SHULKER_CLOSE = 120
+		const val SOUND_HAGGLE = 121
+		const val SOUND_HAGGLE_YES = 122
+		const val SOUND_HAGGLE_NO = 123
+		const val SOUND_HAGGLE_IDLE = 124
+		const val SOUND_CHORUSGROW = 125
+		const val SOUND_CHORUSDEATH = 126
+		const val SOUND_GLASS = 127
+		const val SOUND_POTION_BREWED = 128
+		const val SOUND_CAST_SPELL = 129
+		const val SOUND_PREPARE_ATTACK = 130
+		const val SOUND_PREPARE_SUMMON = 131
+		const val SOUND_PREPARE_WOLOLO = 132
+		const val SOUND_FANG = 133
+		const val SOUND_CHARGE = 134
+		const val SOUND_CAMERA_TAKE_PICTURE = 135
+		const val SOUND_LEASHKNOT_PLACE = 136
+		const val SOUND_LEASHKNOT_BREAK = 137
+		const val SOUND_GROWL = 138
+		const val SOUND_WHINE = 139
+		const val SOUND_PANT = 140
+		const val SOUND_PURR = 141
+		const val SOUND_PURREOW = 142
+		const val SOUND_DEATH_MIN_VOLUME = 143
+		const val SOUND_DEATH_MID_VOLUME = 144
+		const val SOUND_IMITATE_BLAZE = 145
+		const val SOUND_IMITATE_CAVE_SPIDER = 146
+		const val SOUND_IMITATE_CREEPER = 147
+		const val SOUND_IMITATE_ELDER_GUARDIAN = 148
+		const val SOUND_IMITATE_ENDER_DRAGON = 149
+		const val SOUND_IMITATE_ENDERMAN = 150
+		const val SOUND_IMITATE_EVOCATION_ILLAGER = 152
+		const val SOUND_IMITATE_GHAST = 153
+		const val SOUND_IMITATE_HUSK = 154
+		const val SOUND_IMITATE_ILLUSION_ILLAGER = 155
+		const val SOUND_IMITATE_MAGMA_CUBE = 156
+		const val SOUND_IMITATE_POLAR_BEAR = 157
+		const val SOUND_IMITATE_SHULKER = 158
+		const val SOUND_IMITATE_SILVERFISH = 159
+		const val SOUND_IMITATE_SKELETON = 160
+		const val SOUND_IMITATE_SLIME = 161
+		const val SOUND_IMITATE_SPIDER = 162
+		const val SOUND_IMITATE_STRAY = 163
+		const val SOUND_IMITATE_VEX = 164
+		const val SOUND_IMITATE_VINDICATION_ILLAGER = 165
+		const val SOUND_IMITATE_WITCH = 166
+		const val SOUND_IMITATE_WITHER = 167
+		const val SOUND_IMITATE_WITHER_SKELETON = 168
+		const val SOUND_IMITATE_WOLF = 169
+		const val SOUND_IMITATE_ZOMBIE = 170
+		const val SOUND_IMITATE_ZOMBIE_PIGMAN = 171
+		const val SOUND_IMITATE_ZOMBIE_VILLAGER = 172
+		const val SOUND_BLOCK_END_PORTAL_FRAME_FILL = 173
+		const val SOUND_BLOCK_END_PORTAL_SPAWN = 174
+		const val SOUND_RANDOM_ANVIL_USE = 175
+		const val SOUND_BOTTLE_DRAGONBREATH = 176
+		const val SOUND_PORTAL_TRAVEL = 177
+		const val SOUND_ITEM_TRIDENT_HIT = 178
+		const val SOUND_ITEM_TRIDENT_RETURN = 179
+		const val SOUND_ITEM_TRIDENT_RIPTIDE_1 = 180
+		const val SOUND_ITEM_TRIDENT_RIPTIDE_2 = 181
+		const val SOUND_ITEM_TRIDENT_RIPTIDE_3 = 182
+		const val SOUND_ITEM_TRIDENT_THROW = 183
+		const val SOUND_ITEM_TRIDENT_THUNDER = 184
+		const val SOUND_ITEM_TRIDENT_HIT_GROUND = 185
+		const val SOUND_DEFAULT = 186
+		const val SOUND_ELEMCONSTRUCT_OPEN = 188
+		const val SOUND_ICEBOMB_HIT = 189
+		const val SOUND_BALLOONPOP = 190
+		const val SOUND_LT_REACTION_ICEBOMB = 191
+		const val SOUND_LT_REACTION_BLEACH = 192
+		const val SOUND_LT_REACTION_EPASTE = 193
+		const val SOUND_LT_REACTION_EPASTE2 = 194
+		const val SOUND_LT_REACTION_FERTILIZER = 199
+		const val SOUND_LT_REACTION_FIREBALL = 200
+		const val SOUND_LT_REACTION_MGSALT = 201
+		const val SOUND_LT_REACTION_MISCFIRE = 202
+		const val SOUND_LT_REACTION_FIRE = 203
+		const val SOUND_LT_REACTION_MISCEXPLOSION = 204
+		const val SOUND_LT_REACTION_MISCMYSTICAL = 205
+		const val SOUND_LT_REACTION_MISCMYSTICAL2 = 206
+		const val SOUND_LT_REACTION_PRODUCT = 207
+		const val SOUND_SPARKLER_USE = 208
+		const val SOUND_GLOWSTICK_USE = 209
+		const val SOUND_SPARKLER_ACTIVE = 210
+		const val SOUND_CONVERT_TO_DROWNED = 211
+		const val SOUND_BUCKET_FILL_FISH = 212
+		const val SOUND_BUCKET_EMPTY_FISH = 213
+		const val SOUND_BUBBLE_UP = 214
+		const val SOUND_BUBBLE_DOWN = 215
+		const val SOUND_BUBBLE_POP = 216
+		const val SOUND_BUBBLE_UPINSIDE = 217
+		const val SOUND_BUBBLE_DOWNINSIDE = 218
+		const val SOUND_HURT_BABY = 219
+		const val SOUND_DEATH_BABY = 220
+		const val SOUND_STEP_BABY = 221
+		const val SOUND_BORN = 223
+		const val SOUND_BLOCK_TURTLE_EGG_BREAK = 224
+		const val SOUND_BLOCK_TURTLE_EGG_CRACK = 225
+		const val SOUND_BLOCK_TURTLE_EGG_HATCH = 226
+		const val SOUND_BLOCK_TURTLE_EGG_ATTACK = 228
+		const val SOUND_BEACON_ACTIVATE = 229
+		const val SOUND_BEACON_AMBIENT = 230
+		const val SOUND_BEACON_DEACTIVATE = 231
+		const val SOUND_BEACON_POWER = 232
+		const val SOUND_CONDUIT_ACTIVATE = 233
+		const val SOUND_CONDUIT_AMBIENT = 234
+		const val SOUND_CONDUIT_ATTACK = 235
+		const val SOUND_CONDUIT_DEACTIVATE = 236
+		const val SOUND_CONDUIT_SHORT = 237
+		const val SOUND_SWOOP = 238
+		const val SOUND_BLOCK_BAMBOO_SAPLING_PLACE = 239
+		const val SOUND_PRESNEEZE = 240
+		const val SOUND_SNEEZE = 241
+		const val SOUND_AMBIENT_TAME = 242
+		const val SOUND_SCARED = 243
+		const val SOUND_BLOCK_SCAFFOLDING_CLIMB = 244
+		const val SOUND_CROSSBOW_LOADING_START = 245
+		const val SOUND_CROSSBOW_LOADING_MIDDLE = 246
+		const val SOUND_CROSSBOW_LOADING_END = 247
+		const val SOUND_CROSSBOW_SHOOT = 248
+		const val SOUND_CROSSBOW_QUICK_CHARGE_START = 249
+		const val SOUND_CROSSBOW_QUICK_CHARGE_MIDDLE = 250
+		const val SOUND_CROSSBOW_QUICK_CHARGE_END = 251
+		const val SOUND_AMBIENT_AGGRESSIVE = 252
+		const val SOUND_AMBIENT_WORRIED = 253
+		const val SOUND_CANT_BREED = 254
+		const val SOUND_UNDEFINED = 255
+	}
 }

@@ -1,9 +1,7 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import cn.nukkit.math.BlockFace;
+import cn.nukkit.math.BlockFace
 
-public interface Faceable {
-
-    BlockFace getBlockFace();
-
+interface Faceable {
+	val blockFace: BlockFace?
 }

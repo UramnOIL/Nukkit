@@ -1,64 +1,67 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.BlockVector3;
-import lombok.ToString;
+import cn.nukkit.math.BlockVector3
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class CommandBlockUpdatePacket extends DataPacket {
+class CommandBlockUpdatePacket : DataPacket() {
+	var isBlock = false
+	var x = 0
+	var y = 0
+	var z = 0
+	var commandBlockMode = 0
+	var isRedstoneMode = false
+	var isConditional = false
+	var minecartEid: Long = 0
+	var command: String? = null
+	var lastOutput: String? = null
+	var name: String? = null
+	var shouldTrackOutput = false
 
-    public boolean isBlock;
-    public int x;
-    public int y;
-    public int z;
-    public int commandBlockMode;
-    public boolean isRedstoneMode;
-    public boolean isConditional;
-    public long minecartEid;
-    public String command;
-    public String lastOutput;
-    public String name;
-    public boolean shouldTrackOutput;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.COMMAND_BLOCK_UPDATE_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.COMMAND_BLOCK_UPDATE_PACKET;
-    }
+	@Override
+	override fun decode() {
+		isBlock = this.getBoolean()
+		if (isBlock) {
+			val v: BlockVector3 = this.getBlockVector3()
+			x = v.x
+			y = v.y
+			z = v.z
+			commandBlockMode = this.getUnsignedVarInt() as Int
+			isRedstoneMode = this.getBoolean()
+			isConditional = this.getBoolean()
+		} else {
+			minecartEid = this.getEntityRuntimeId()
+		}
+		command = this.getString()
+		lastOutput = this.getString()
+		name = this.getString()
+		shouldTrackOutput = this.getBoolean()
+	}
 
-    @Override
-    public void decode() {
-        this.isBlock = this.getBoolean();
-        if (this.isBlock) {
-            BlockVector3 v = this.getBlockVector3();
-            this.x = v.x;
-            this.y = v.y;
-            this.z = v.z;
-            this.commandBlockMode = (int) this.getUnsignedVarInt();
-            this.isRedstoneMode = this.getBoolean();
-            this.isConditional = this.getBoolean();
-        } else {
-            this.minecartEid = this.getEntityRuntimeId();
-        }
-        this.command = this.getString();
-        this.lastOutput = this.getString();
-        this.name = this.getString();
-        this.shouldTrackOutput = this.getBoolean();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putBoolean(this.isBlock);
-        if (this.isBlock) {
-            this.putBlockVector3(this.x, this.y, this.z);
-            this.putUnsignedVarInt(this.commandBlockMode);
-            this.putBoolean(this.isRedstoneMode);
-            this.putBoolean(this.isConditional);
-        } else {
-            this.putEntityRuntimeId(this.minecartEid);
-        }
-        this.putString(this.command);
-        this.putString(this.lastOutput);
-        this.putString(this.name);
-        this.putBoolean(this.shouldTrackOutput);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putBoolean(isBlock)
+		if (isBlock) {
+			this.putBlockVector3(x, y, z)
+			this.putUnsignedVarInt(commandBlockMode)
+			this.putBoolean(isRedstoneMode)
+			this.putBoolean(isConditional)
+		} else {
+			this.putEntityRuntimeId(minecartEid)
+		}
+		this.putString(command)
+		this.putString(lastOutput)
+		this.putString(name)
+		this.putBoolean(shouldTrackOutput)
+	}
 }

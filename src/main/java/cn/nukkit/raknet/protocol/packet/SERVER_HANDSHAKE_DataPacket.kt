@@ -1,59 +1,48 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.protocol.Packet;
-
-import java.net.InetSocketAddress;
+import cn.nukkit.raknet.protocol.Packet
+import java.net.InetSocketAddress
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class SERVER_HANDSHAKE_DataPacket extends Packet {
-    public static final byte ID = (byte) 0x10;
+class SERVER_HANDSHAKE_DataPacket : Packet() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	override var address: String? = null
+	var port = 0
+	val systemAddresses = arrayOf(
+			InetSocketAddress("127.0.0.1", 0),
+			InetSocketAddress("0.0.0.0", 0),
+			InetSocketAddress("0.0.0.0", 0),
+			InetSocketAddress("0.0.0.0", 0),
+			InetSocketAddress("0.0.0.0", 0),
+			InetSocketAddress("0.0.0.0", 0),
+			InetSocketAddress("0.0.0.0", 0),
+			InetSocketAddress("0.0.0.0", 0),
+			InetSocketAddress("0.0.0.0", 0),
+			InetSocketAddress("0.0.0.0", 0)
+	)
+	var sendPing: Long = 0
+	var sendPong: Long = 0
+	override fun encode() {
+		super.encode()
+		this.putAddress(InetSocketAddress(address, port))
+		putShort(0)
+		for (i in 0..9) {
+			this.putAddress(systemAddresses[i])
+		}
+		putLong(sendPing)
+		putLong(sendPong)
+	}
 
-    public String address;
-    public int port;
-    public final InetSocketAddress[] systemAddresses = new InetSocketAddress[]{
-            new InetSocketAddress("127.0.0.1", 0),
-            new InetSocketAddress("0.0.0.0", 0),
-            new InetSocketAddress("0.0.0.0", 0),
-            new InetSocketAddress("0.0.0.0", 0),
-            new InetSocketAddress("0.0.0.0", 0),
-            new InetSocketAddress("0.0.0.0", 0),
-            new InetSocketAddress("0.0.0.0", 0),
-            new InetSocketAddress("0.0.0.0", 0),
-            new InetSocketAddress("0.0.0.0", 0),
-            new InetSocketAddress("0.0.0.0", 0)
-    };
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return SERVER_HANDSHAKE_DataPacket()
+		}
+	}
 
-    public long sendPing;
-    public long sendPong;
-
-    @Override
-    public void encode() {
-        super.encode();
-        this.putAddress(new InetSocketAddress(this.address, this.port));
-        this.putShort(0);
-        for (int i = 0; i < 10; ++i) {
-            this.putAddress(this.systemAddresses[i]);
-        }
-
-        this.putLong(this.sendPing);
-        this.putLong(this.sendPong);
-    }
-
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new SERVER_HANDSHAKE_DataPacket();
-        }
-
-    }
-
+	companion object {
+		const val iD = 0x10.toByte()
+	}
 }

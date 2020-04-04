@@ -1,28 +1,31 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class CameraPacket extends DataPacket {
+class CameraPacket : DataPacket() {
+	var cameraUniqueId: Long = 0
+	var playerUniqueId: Long = 0
 
-    public long cameraUniqueId;
-    public long playerUniqueId;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.CAMERA_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.CAMERA_PACKET;
-    }
+	@Override
+	override fun decode() {
+		cameraUniqueId = this.getVarLong()
+		playerUniqueId = this.getVarLong()
+	}
 
-    @Override
-    public void decode() {
-        this.cameraUniqueId = this.getVarLong();
-        this.playerUniqueId = this.getVarLong();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityUniqueId(this.cameraUniqueId);
-        this.putEntityUniqueId(this.playerUniqueId);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityUniqueId(cameraUniqueId)
+		this.putEntityUniqueId(playerUniqueId)
+	}
 }

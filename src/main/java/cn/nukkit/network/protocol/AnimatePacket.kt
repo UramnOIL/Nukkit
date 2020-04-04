@@ -1,75 +1,65 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import lombok.ToString;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author Nukkit Project Team
  */
 @ToString
-public class AnimatePacket extends DataPacket {
+class AnimatePacket : DataPacket() {
+	var eid: Long = 0
+	var action: Action? = null
+	var rowingTime = 0f
 
-    public static final byte NETWORK_ID = ProtocolInfo.ANIMATE_PACKET;
+	@Override
+	override fun decode() {
+		action = Action.fromId(this.getVarInt())
+		eid = getEntityRuntimeId()
+		if (action == Action.ROW_RIGHT || action == Action.ROW_LEFT) {
+			rowingTime = this.getLFloat()
+		}
+	}
 
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarInt(action!!.id)
+		this.putEntityRuntimeId(eid)
+		if (action == Action.ROW_RIGHT || action == Action.ROW_LEFT) {
+			this.putLFloat(rowingTime)
+		}
+	}
 
-    public long eid;
-    public Action action;
-    public float rowingTime;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void decode() {
-        this.action = Action.fromId(this.getVarInt());
-        this.eid = getEntityRuntimeId();
-        if (this.action == Action.ROW_RIGHT || this.action == Action.ROW_LEFT) {
-            this.rowingTime = this.getLFloat();
-        }
-    }
+	enum class Action(val id: Int) {
+		NO_ACTION(0), SWING_ARM(1), WAKE_UP(3), CRITICAL_HIT(4), MAGIC_CRITICAL_HIT(5), ROW_RIGHT(128), ROW_LEFT(129);
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarInt(this.action.getId());
-        this.putEntityRuntimeId(this.eid);
-        if (this.action == Action.ROW_RIGHT || this.action == Action.ROW_LEFT) {
-            this.putLFloat(this.rowingTime);
-        }
-    }
+		companion object {
+			private val ID_LOOKUP: Int2ObjectMap<Action?>? = Int2ObjectOpenHashMap()
+			fun fromId(id: Int): Action? {
+				return ID_LOOKUP.get(id)
+			}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+			init {
+				for (value in values()) {
+					ID_LOOKUP.put(cn.nukkit.network.protocol.value.id, cn.nukkit.network.protocol.value)
+				}
+			}
+		}
 
-    public enum Action {
-        NO_ACTION(0),
-        SWING_ARM(1),
-        WAKE_UP(3),
-        CRITICAL_HIT(4),
-        MAGIC_CRITICAL_HIT(5),
-        ROW_RIGHT(128),
-        ROW_LEFT(129);
+	}
 
-        private static final Int2ObjectMap<Action> ID_LOOKUP = new Int2ObjectOpenHashMap<>();
-
-        static {
-            for (Action value : values()) {
-                ID_LOOKUP.put(value.id, value);
-            }
-        }
-
-        private final int id;
-
-        Action(int id) {
-            this.id = id;
-        }
-
-        public int getId() {
-            return id;
-        }
-
-        public static Action fromId(int id) {
-            return ID_LOOKUP.get(id);
-        }
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.ANIMATE_PACKET
+	}
 }

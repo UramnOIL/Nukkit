@@ -84,15 +84,15 @@ public final class Timings {
     public static final Timing permissionDefaultTimer;
 
     static {
-        setTimingsEnabled(Server.getInstance().getConfig("timings.enabled", false));
-        setVerboseEnabled(Server.getInstance().getConfig("timings.verbose", false));
-        setHistoryInterval(Server.getInstance().getConfig("timings.history-interval", 6000));
-        setHistoryLength(Server.getInstance().getConfig("timings.history-length", 72000));
+        setTimingsEnabled(Server.instance.config);
+        setVerboseEnabled(Server.instance.config);
+        setHistoryInterval(Server.instance.config);
+        setHistoryLength(Server.instance.config);
 
-        privacy = Server.getInstance().getConfig("timings.privacy", false);
-        ignoredConfigSections.addAll(Server.getInstance().getConfig().getStringList("timings.ignore"));
+        privacy = Server.instance.config;
+        ignoredConfigSections.addAll(Server.instance.getConfig().getStringList("timings.ignore"));
 
-        Server.getInstance().getLogger().debug("Timings: \n" +
+        Server.instance.getLogger().debug("Timings: \n" +
                 "Enabled - " + isTimingsEnabled() + "\n" +
                 "Verbose - " + isVerboseEnabled() + "\n" +
                 "History Interval - " + getHistoryInterval() + "\n" +
@@ -178,7 +178,7 @@ public final class Timings {
         //For special cases of servers with special permission to bypass the max.
         //This max helps keep data file sizes reasonable for processing on Aikar's Timing parser side.
         //Setting this will not help you bypass the max unless Aikar has added an exception on the API side.
-        if (Server.getInstance().getConfig().getBoolean("timings.bypass-max", false)) {
+        if (Server.instance.getConfig().getBoolean("timings.bypass-max", false)) {
             maxLength = Integer.MAX_VALUE;
         }
 
@@ -187,7 +187,7 @@ public final class Timings {
         Queue<TimingsHistory> oldQueue = TimingsManager.HISTORY;
         int frames = (getHistoryLength() / getHistoryInterval());
         if (length > maxLength) {
-            Server.getInstance().getLogger().warning(
+            Server.instance.getLogger().warning(
                     "Timings Length too high. Requested " + length + ", max is " + maxLength
                             + ". To get longer history, you must increase your interval. Set Interval to "
                             + Math.ceil((float) length / MAX_HISTORY_FRAMES)

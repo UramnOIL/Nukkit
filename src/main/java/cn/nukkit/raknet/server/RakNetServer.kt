@@ -1,106 +1,70 @@
-package cn.nukkit.raknet.server;
+package cn.nukkit.raknet.server
 
-import cn.nukkit.Server;
-import cn.nukkit.utils.ThreadedLogger;
-
-import java.util.concurrent.ConcurrentLinkedQueue;
+import cn.nukkit.Server
+import cn.nukkit.utils.ThreadedLogger
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class RakNetServer extends Thread {
-    protected final int port;
-    protected String interfaz;
+class RakNetServer @JvmOverloads constructor(logger: ThreadedLogger, val port: Int, interfaz: String = "0.0.0.0") : Thread() {
+	var `interface`: String
+		protected set
+	var logger: ThreadedLogger
+		protected set
+	var externalQueue: ConcurrentLinkedQueue<ByteArray>
+		protected set
+	var internalQueue: ConcurrentLinkedQueue<ByteArray>
+		protected set
+	var isShutdown = false
+		protected set
 
-    protected ThreadedLogger logger;
+	fun shutdown() {
+		isShutdown = true
+	}
 
-    protected ConcurrentLinkedQueue<byte[]> externalQueue;
-    protected ConcurrentLinkedQueue<byte[]> internalQueue;
+	fun pushMainToThreadPacket(data: ByteArray) {
+		internalQueue.add(data)
+	}
 
-    protected boolean shutdown;
+	fun readMainToThreadPacket(): ByteArray {
+		return internalQueue.poll()
+	}
 
+	fun pushThreadToMainPacket(data: ByteArray) {
+		externalQueue.add(data)
+	}
 
-    public RakNetServer(ThreadedLogger logger, int port) {
-        this(logger, port, "0.0.0.0");
-    }
+	fun readThreadToMainPacket(): ByteArray {
+		return externalQueue.poll()
+	}
 
-    public RakNetServer(ThreadedLogger logger, int port, String interfaz) {
-        this.port = port;
-        if (port < 1 || port > 65536) {
-            throw new IllegalArgumentException("Invalid port range");
-        }
+	private inner class ShutdownHandler : Thread() {
+		override fun run() {
+			if (!isShutdown) {
+				logger.emergency("RakNet crashed!")
+			}
+		}
+	}
 
-        this.interfaz = interfaz;
-        this.logger = logger;
+	override fun run() {
+		name = "RakNet Thread #" + currentThread().id
+		Runtime.getRuntime().addShutdownHook(ShutdownHandler())
+		val socket = UDPServerSocket(logger, port, `interface`)
+		try {
+			SessionManager(this, socket)
+		} catch (e: Exception) {
+			Server.instance.logger.logException(e)
+		}
+	}
 
-        this.externalQueue = new ConcurrentLinkedQueue<>();
-        this.internalQueue = new ConcurrentLinkedQueue<>();
-
-        this.start();
-    }
-
-    public boolean isShutdown() {
-        return shutdown;
-    }
-
-    public void shutdown() {
-        this.shutdown = true;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public String getInterface() {
-        return interfaz;
-    }
-
-    public ThreadedLogger getLogger() {
-        return logger;
-    }
-
-    public ConcurrentLinkedQueue<byte[]> getExternalQueue() {
-        return externalQueue;
-    }
-
-    public ConcurrentLinkedQueue<byte[]> getInternalQueue() {
-        return internalQueue;
-    }
-
-    public void pushMainToThreadPacket(byte[] data) {
-        this.internalQueue.add(data);
-    }
-
-    public byte[] readMainToThreadPacket() {
-        return this.internalQueue.poll();
-    }
-
-    public void pushThreadToMainPacket(byte[] data) {
-        this.externalQueue.add(data);
-    }
-
-    public byte[] readThreadToMainPacket() {
-        return this.externalQueue.poll();
-    }
-
-    private class ShutdownHandler extends Thread {
-        public void run() {
-            if (!shutdown) {
-                logger.emergency("RakNet crashed!");
-            }
-        }
-    }
-
-    @Override
-    public void run() {
-        this.setName("RakNet Thread #" + Thread.currentThread().getId());
-        Runtime.getRuntime().addShutdownHook(new ShutdownHandler());
-        UDPServerSocket socket = new UDPServerSocket(this.getLogger(), port, this.interfaz);
-        try {
-            new SessionManager(this, socket);
-        } catch (Exception e) {
-            Server.getInstance().getLogger().logException(e);
-        }
-    }
+	init {
+		require(!(port < 1 || port > 65536)) { "Invalid port range" }
+		`interface` = interfaz
+		this.logger = logger
+		externalQueue = ConcurrentLinkedQueue()
+		internalQueue = ConcurrentLinkedQueue()
+		start()
+	}
 }

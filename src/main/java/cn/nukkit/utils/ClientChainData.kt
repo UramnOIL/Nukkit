@@ -1,284 +1,250 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import cn.nukkit.network.protocol.LoginPacket;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSObject;
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
-import net.minidev.json.JSONObject;
-
-import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.*;
+import cn.nukkit.network.protocol.LoginPacket
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.reflect.TypeToken
+import com.nimbusds.jose.JOSEException
+import com.nimbusds.jose.JWSObject
+import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory
+import java.nio.charset.StandardCharsets
+import java.security.KeyFactory
+import java.security.NoSuchAlgorithmException
+import java.security.PublicKey
+import java.security.spec.InvalidKeySpecException
+import java.security.spec.X509EncodedKeySpec
+import java.util.*
 
 /**
  * ClientChainData is a container of chain data sent from clients.
- * <p>
+ *
+ *
  * Device information such as client UUID, xuid and serverAddress, can be
  * read from instances of this object.
- * <p>
+ *
+ *
  * To get chain data, you can use player.getLoginChainData() or read(loginPacket)
- * <p>
+ *
+ *
  * ===============
  * author: boybook
  * Nukkit Project
  * ===============
  */
-public final class ClientChainData implements LoginChainData {
-    private static final String MOJANG_PUBLIC_KEY_BASE64 =
-            "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V";
-    private static final PublicKey MOJANG_PUBLIC_KEY;
+class ClientChainData private constructor(buffer: ByteArray) : LoginChainData {
+	companion object {
+		private const val MOJANG_PUBLIC_KEY_BASE64 = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V"
+		private var MOJANG_PUBLIC_KEY: PublicKey? = null
+		@JvmStatic
+        fun of(buffer: ByteArray): ClientChainData {
+			return ClientChainData(buffer)
+		}
 
-    static {
-        try {
-            MOJANG_PUBLIC_KEY = generateKey(MOJANG_PUBLIC_KEY_BASE64);
-        } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
-            throw new AssertionError(e);
-        }
-    }
+		fun read(pk: LoginPacket): ClientChainData {
+			return of(pk.getBuffer())
+		}
 
-    public static ClientChainData of(byte[] buffer) {
-        return new ClientChainData(buffer);
-    }
+		const val UI_PROFILE_CLASSIC = 0
+		const val UI_PROFILE_POCKET = 1
 
-    public static ClientChainData read(LoginPacket pk) {
-        return of(pk.getBuffer());
-    }
+		@Throws(NoSuchAlgorithmException::class, InvalidKeySpecException::class)
+		private fun generateKey(base64: String): PublicKey {
+			return KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(Base64.getDecoder().decode(base64)))
+		}
 
-    @Override
-    public String getUsername() {
-        return username;
-    }
+		init {
+			MOJANG_PUBLIC_KEY = try {
+				generateKey(MOJANG_PUBLIC_KEY_BASE64)
+			} catch (e: InvalidKeySpecException) {
+				throw AssertionError(e)
+			} catch (e: NoSuchAlgorithmException) {
+				throw AssertionError(e)
+			}
+		}
+	}
 
-    @Override
-    public UUID getClientUUID() {
-        return clientUUID;
-    }
+	override fun getUsername(): String {
+		return username!!
+	}
 
-    @Override
-    public String getIdentityPublicKey() {
-        return identityPublicKey;
-    }
+	override fun getClientUUID(): UUID {
+		return clientUUID!!
+	}
 
-    @Override
-    public long getClientId() {
-        return clientId;
-    }
+	override fun getIdentityPublicKey(): String {
+		return identityPublicKey!!
+	}
 
-    @Override
-    public String getServerAddress() {
-        return serverAddress;
-    }
+	override fun getClientId(): Long {
+		return clientId
+	}
 
-    @Override
-    public String getDeviceModel() {
-        return deviceModel;
-    }
+	override fun getServerAddress(): String {
+		return serverAddress!!
+	}
 
-    @Override
-    public int getDeviceOS() {
-        return deviceOS;
-    }
+	override fun getDeviceModel(): String {
+		return deviceModel!!
+	}
 
-    @Override
-    public String getDeviceId() {
-        return deviceId;
-    }
+	override fun getDeviceOS(): Int {
+		return deviceOS
+	}
 
-    @Override
-    public String getGameVersion() {
-        return gameVersion;
-    }
+	override fun getDeviceId(): String {
+		return deviceId!!
+	}
 
-    @Override
-    public int getGuiScale() {
-        return guiScale;
-    }
+	override fun getGameVersion(): String {
+		return gameVersion!!
+	}
 
-    @Override
-    public String getLanguageCode() {
-        return languageCode;
-    }
+	override fun getGuiScale(): Int {
+		return guiScale
+	}
 
-    @Override
-    public String getXUID() {
-        return xuid;
-    }
+	override fun getLanguageCode(): String {
+		return languageCode!!
+	}
 
-    private boolean xboxAuthed;
+	override fun getXUID(): String {
+		return xuid!!
+	}
 
-    @Override
-    public int getCurrentInputMode() {
-        return currentInputMode;
-    }
+	private var xboxAuthed = false
+	override fun getCurrentInputMode(): Int {
+		return currentInputMode
+	}
 
-    @Override
-    public int getDefaultInputMode() {
-        return defaultInputMode;
-    }
+	override fun getDefaultInputMode(): Int {
+		return defaultInputMode
+	}
 
-    @Override
-    public String getCapeData() {
-        return capeData;
-    }
+	override fun getCapeData(): String {
+		return capeData!!
+	}
 
-    public final static int UI_PROFILE_CLASSIC = 0;
-    public final static int UI_PROFILE_POCKET = 1;
+	override fun getUIProfile(): Int {
+		return UIProfile
+	}
 
-    @Override
-    public int getUIProfile() {
-        return UIProfile;
-    }
+	///////////////////////////////////////////////////////////////////////////
+	// Override
+	///////////////////////////////////////////////////////////////////////////
+	override fun equals(obj: Any?): Boolean {
+		return obj is ClientChainData && bs == obj.bs
+	}
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Override
-    ///////////////////////////////////////////////////////////////////////////
+	override fun hashCode(): Int {
+		return bs.hashCode()
+	}
 
-    @Override
-    public boolean equals(Object obj) {
-        return obj instanceof ClientChainData && Objects.equals(bs, ((ClientChainData) obj).bs);
-    }
+	///////////////////////////////////////////////////////////////////////////
+	// Internal
+	///////////////////////////////////////////////////////////////////////////
+	private var username: String? = null
+	private var clientUUID: UUID? = null
+	private var xuid: String? = null
+	private var identityPublicKey: String? = null
+	private var clientId: Long = 0
+	private var serverAddress: String? = null
+	private var deviceModel: String? = null
+	private var deviceOS = 0
+	private var deviceId: String? = null
+	private var gameVersion: String? = null
+	private var guiScale = 0
+	private var languageCode: String? = null
+	private var currentInputMode = 0
+	private var defaultInputMode = 0
+	private var UIProfile = 0
+	private var capeData: String? = null
+	private val bs = BinaryStream()
+	override fun isXboxAuthed(): Boolean {
+		return xboxAuthed
+	}
 
-    @Override
-    public int hashCode() {
-        return bs.hashCode();
-    }
+	private fun decodeSkinData() {
+		val skinToken = decodeToken(String(bs[bs.lInt])) ?: return
+		if (skinToken.has("ClientRandomId")) clientId = skinToken["ClientRandomId"].asLong
+		if (skinToken.has("ServerAddress")) serverAddress = skinToken["ServerAddress"].asString
+		if (skinToken.has("DeviceModel")) deviceModel = skinToken["DeviceModel"].asString
+		if (skinToken.has("DeviceOS")) deviceOS = skinToken["DeviceOS"].asInt
+		if (skinToken.has("DeviceId")) deviceId = skinToken["DeviceId"].asString
+		if (skinToken.has("GameVersion")) gameVersion = skinToken["GameVersion"].asString
+		if (skinToken.has("GuiScale")) guiScale = skinToken["GuiScale"].asInt
+		if (skinToken.has("LanguageCode")) languageCode = skinToken["LanguageCode"].asString
+		if (skinToken.has("CurrentInputMode")) currentInputMode = skinToken["CurrentInputMode"].asInt
+		if (skinToken.has("DefaultInputMode")) defaultInputMode = skinToken["DefaultInputMode"].asInt
+		if (skinToken.has("UIProfile")) UIProfile = skinToken["UIProfile"].asInt
+		if (skinToken.has("CapeData")) capeData = skinToken["CapeData"].asString
+	}
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Internal
-    ///////////////////////////////////////////////////////////////////////////
+	private fun decodeToken(token: String): JsonObject? {
+		val base = token.split("\\.").toTypedArray()
+		if (base.size < 2) return null
+		val json = String(Base64.getDecoder().decode(base[1]), StandardCharsets.UTF_8)
+		//Server.getInstance().getLogger().debug(json);
+		return Gson().fromJson(json, JsonObject::class.java)
+	}
 
-    private String username;
-    private UUID clientUUID;
-    private String xuid;
+	private fun decodeChainData() {
+		val map = Gson().fromJson<Map<String, List<String>>>(String(bs[bs.lInt], StandardCharsets.UTF_8),
+				object : TypeToken<Map<String?, List<String?>?>?>() {}.type)
+		if (map.isEmpty() || !map.containsKey("chain") || map["chain"]!!.isEmpty()) return
+		val chains = map["chain"]!!
 
-    private static PublicKey generateKey(String base64) throws NoSuchAlgorithmException, InvalidKeySpecException {
-        return KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(base64)));
-    }
-    private String identityPublicKey;
+		// Validate keys
+		xboxAuthed = try {
+			verifyChain(chains)
+		} catch (e: Exception) {
+			false
+		}
+		for (c in chains) {
+			val chainMap = decodeToken(c) ?: continue
+			if (chainMap.has("extraData")) {
+				val extra = chainMap["extraData"].asJsonObject
+				if (extra.has("displayName")) username = extra["displayName"].asString
+				if (extra.has("identity")) clientUUID = UUID.fromString(extra["identity"].asString)
+				if (extra.has("XUID")) xuid = extra["XUID"].asString
+			}
+			if (chainMap.has("identityPublicKey")) identityPublicKey = chainMap["identityPublicKey"].asString
+		}
+		if (!xboxAuthed) {
+			xuid = null
+		}
+	}
 
-    private long clientId;
-    private String serverAddress;
-    private String deviceModel;
-    private int deviceOS;
-    private String deviceId;
-    private String gameVersion;
-    private int guiScale;
-    private String languageCode;
-    private int currentInputMode;
-    private int defaultInputMode;
+	@Throws(Exception::class)
+	private fun verifyChain(chains: List<String>): Boolean {
+		var lastKey: PublicKey? = null
+		var mojangKeyVerified = false
+		for (chain in chains) {
+			val jws = JWSObject.parse(chain)
+			if (!mojangKeyVerified) {
+				// First chain should be signed using Mojang's private key. We'd be in big trouble if it leaked...
+				mojangKeyVerified = verify(MOJANG_PUBLIC_KEY, jws)
+			}
+			if (lastKey != null) {
+				if (!verify(lastKey, jws)) {
+					throw JOSEException("Unable to verify key in chain.")
+				}
+			}
+			val payload = jws.payload.toJSONObject()
+			val base64key = payload.getAsString("identityPublicKey") ?: throw RuntimeException("No key found")
+			lastKey = generateKey(base64key)
+		}
+		return mojangKeyVerified
+	}
 
-    private int UIProfile;
+	@Throws(JOSEException::class)
+	private fun verify(key: PublicKey?, `object`: JWSObject): Boolean {
+		val verifier = DefaultJWSVerifierFactory().createJWSVerifier(`object`.header, key)
+		return `object`.verify(verifier)
+	}
 
-    private String capeData;
-
-    private BinaryStream bs = new BinaryStream();
-
-    private ClientChainData(byte[] buffer) {
-        bs.setBuffer(buffer, 0);
-        decodeChainData();
-        decodeSkinData();
-    }
-
-    @Override
-    public boolean isXboxAuthed() {
-        return xboxAuthed;
-    }
-
-    private void decodeSkinData() {
-        JsonObject skinToken = decodeToken(new String(bs.get(bs.getLInt())));
-        if (skinToken == null) return;
-        if (skinToken.has("ClientRandomId")) this.clientId = skinToken.get("ClientRandomId").getAsLong();
-        if (skinToken.has("ServerAddress")) this.serverAddress = skinToken.get("ServerAddress").getAsString();
-        if (skinToken.has("DeviceModel")) this.deviceModel = skinToken.get("DeviceModel").getAsString();
-        if (skinToken.has("DeviceOS")) this.deviceOS = skinToken.get("DeviceOS").getAsInt();
-        if (skinToken.has("DeviceId")) this.deviceId = skinToken.get("DeviceId").getAsString();
-        if (skinToken.has("GameVersion")) this.gameVersion = skinToken.get("GameVersion").getAsString();
-        if (skinToken.has("GuiScale")) this.guiScale = skinToken.get("GuiScale").getAsInt();
-        if (skinToken.has("LanguageCode")) this.languageCode = skinToken.get("LanguageCode").getAsString();
-        if (skinToken.has("CurrentInputMode")) this.currentInputMode = skinToken.get("CurrentInputMode").getAsInt();
-        if (skinToken.has("DefaultInputMode")) this.defaultInputMode = skinToken.get("DefaultInputMode").getAsInt();
-        if (skinToken.has("UIProfile")) this.UIProfile = skinToken.get("UIProfile").getAsInt();
-        if (skinToken.has("CapeData")) this.capeData = skinToken.get("CapeData").getAsString();
-    }
-
-    private JsonObject decodeToken(String token) {
-        String[] base = token.split("\\.");
-        if (base.length < 2) return null;
-        String json = new String(Base64.getDecoder().decode(base[1]), StandardCharsets.UTF_8);
-        //Server.getInstance().getLogger().debug(json);
-        return new Gson().fromJson(json, JsonObject.class);
-    }
-
-    private void decodeChainData() {
-        Map<String, List<String>> map = new Gson().fromJson(new String(bs.get(bs.getLInt()), StandardCharsets.UTF_8),
-                new TypeToken<Map<String, List<String>>>() {
-                }.getType());
-        if (map.isEmpty() || !map.containsKey("chain") || map.get("chain").isEmpty()) return;
-        List<String> chains = map.get("chain");
-
-        // Validate keys
-        try {
-            xboxAuthed = verifyChain(chains);
-        } catch (Exception e) {
-            xboxAuthed = false;
-        }
-
-        for (String c : chains) {
-            JsonObject chainMap = decodeToken(c);
-            if (chainMap == null) continue;
-            if (chainMap.has("extraData")) {
-                JsonObject extra = chainMap.get("extraData").getAsJsonObject();
-                if (extra.has("displayName")) this.username = extra.get("displayName").getAsString();
-                if (extra.has("identity")) this.clientUUID = UUID.fromString(extra.get("identity").getAsString());
-                if (extra.has("XUID")) this.xuid = extra.get("XUID").getAsString();
-            }
-            if (chainMap.has("identityPublicKey"))
-                this.identityPublicKey = chainMap.get("identityPublicKey").getAsString();
-        }
-
-        if (!xboxAuthed) {
-            xuid = null;
-        }
-    }
-
-    private boolean verifyChain(List<String> chains) throws Exception {
-
-        PublicKey lastKey = null;
-        boolean mojangKeyVerified = false;
-        for (String chain: chains) {
-            JWSObject jws = JWSObject.parse(chain);
-
-            if (!mojangKeyVerified) {
-                // First chain should be signed using Mojang's private key. We'd be in big trouble if it leaked...
-                mojangKeyVerified = verify(MOJANG_PUBLIC_KEY, jws);
-            }
-
-            if (lastKey != null) {
-                if (!verify(lastKey, jws)) {
-                    throw new JOSEException("Unable to verify key in chain.");
-                }
-            }
-
-            JSONObject payload = jws.getPayload().toJSONObject();
-            String base64key = payload.getAsString("identityPublicKey");
-            if (base64key == null) {
-                throw new RuntimeException("No key found");
-            }
-            lastKey = generateKey(base64key);
-        }
-        return mojangKeyVerified;
-    }
-
-    private boolean verify(PublicKey key, JWSObject object) throws JOSEException {
-        JWSVerifier verifier = new DefaultJWSVerifierFactory().createJWSVerifier(object.getHeader(), key);
-        return object.verify(verifier);
-    }
+	init {
+		bs.setBuffer(buffer, 0)
+		decodeChainData()
+		decodeSkinData()
+	}
 }

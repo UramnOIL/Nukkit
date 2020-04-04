@@ -1,31 +1,35 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class SpawnExperienceOrbPacket extends DataPacket {
+class SpawnExperienceOrbPacket : DataPacket() {
+	var x = 0f
+	var y = 0f
+	var z = 0f
+	var amount = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.SPAWN_EXPERIENCE_ORB_PACKET;
+	@Override
+	override fun decode() {
+	}
 
-    public float x;
-    public float y;
-    public float z;
-    public int amount;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVector3f(x, y, z)
+		this.putUnsignedVarInt(amount)
+	}
 
-    @Override
-    public void decode() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVector3f(this.x, this.y, this.z);
-        this.putUnsignedVarInt(this.amount);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SPAWN_EXPERIENCE_ORB_PACKET
+	}
 }

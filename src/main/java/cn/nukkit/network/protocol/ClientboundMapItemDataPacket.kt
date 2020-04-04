@@ -1,123 +1,114 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.utils.Utils;
-import lombok.ToString;
-
-import java.awt.*;
-import java.awt.image.BufferedImage;
+import cn.nukkit.utils.Utils
+import lombok.ToString
+import java.awt.*
+import java.awt.image.BufferedImage
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Created by CreeperFace on 5.3.2017.
  */
 @ToString
-public class ClientboundMapItemDataPacket extends DataPacket { //TODO: update to 1.2
+class ClientboundMapItemDataPacket : DataPacket() {
+	//TODO: update to 1.2
+	var eids: IntArray? = IntArray(0)
+	var mapId: Long = 0
+	var update = 0
+	var scale: Byte = 0
+	var isLocked = false
+	var width = 0
+	var height = 0
+	var offsetX = 0
+	var offsetZ = 0
+	var dimensionId: Byte = 0
+	var decorators: Array<MapDecorator?>? = arrayOfNulls<MapDecorator?>(0)
+	var colors: IntArray? = IntArray(0)
+	var image: BufferedImage? = null
 
-    public int[] eids = new int[0];
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.CLIENTBOUND_MAP_ITEM_DATA_PACKET
+	}
 
-    public long mapId;
-    public int update;
-    public byte scale;
-    public boolean isLocked;
-    public int width;
-    public int height;
-    public int offsetX;
-    public int offsetZ;
+	@Override
+	override fun decode() {
+	}
 
-    public byte dimensionId;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityUniqueId(mapId)
+		var update = 0
+		if (eids!!.size > 0) {
+			update = update or 0x08
+		}
+		if (decorators!!.size > 0) {
+			update = update or DECORATIONS_UPDATE
+		}
+		if (image != null || colors!!.size > 0) {
+			update = update or TEXTURE_UPDATE
+		}
+		this.putUnsignedVarInt(update)
+		this.putByte(dimensionId)
+		this.putBoolean(isLocked)
+		if (update and 0x08 != 0) { //TODO: find out what these are for
+			this.putUnsignedVarInt(eids!!.size)
+			for (eid in eids!!) {
+				this.putEntityUniqueId(eid)
+			}
+		}
+		if (update and (TEXTURE_UPDATE or DECORATIONS_UPDATE) != 0) {
+			this.putByte(scale)
+		}
+		if (update and DECORATIONS_UPDATE != 0) {
+			this.putUnsignedVarInt(decorators!!.size)
+			for (decorator in decorators!!) {
+				this.putByte(decorator!!.rotation)
+				this.putByte(decorator!!.icon)
+				this.putByte(decorator!!.offsetX)
+				this.putByte(decorator!!.offsetZ)
+				this.putString(decorator!!.label)
+				this.putVarInt(decorator!!.color.getRGB())
+			}
+		}
+		if (update and TEXTURE_UPDATE != 0) {
+			this.putVarInt(width)
+			this.putVarInt(height)
+			this.putVarInt(offsetX)
+			this.putVarInt(offsetZ)
+			this.putUnsignedVarInt(width * height)
+			if (image != null) {
+				for (y in 0 until width) {
+					for (x in 0 until height) {
+						putUnsignedVarInt(Utils.toABGR(image.getRGB(x, y)))
+					}
+				}
+				image.flush()
+			} else if (colors!!.size > 0) {
+				for (color in colors!!) {
+					putUnsignedVarInt(color)
+				}
+			}
+		}
+	}
 
-    public MapDecorator[] decorators = new MapDecorator[0];
-    public int[] colors = new int[0];
-    public BufferedImage image = null;
+	class MapDecorator {
+		var rotation: Byte = 0
+		var icon: Byte = 0
+		var offsetX: Byte = 0
+		var offsetZ: Byte = 0
+		var label: String? = null
+		var color: Color? = null
+	}
 
-    //update
-    public static final int TEXTURE_UPDATE = 2;
-    public static final int DECORATIONS_UPDATE = 4;
-    public static final int ENTITIES_UPDATE = 8;
-
-    @Override
-    public byte pid() {
-        return ProtocolInfo.CLIENTBOUND_MAP_ITEM_DATA_PACKET;
-    }
-
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityUniqueId(mapId);
-
-        int update = 0;
-        if (eids.length > 0) {
-            update |= 0x08;
-        }
-        if (decorators.length > 0) {
-            update |= DECORATIONS_UPDATE;
-        }
-
-        if (image != null || colors.length > 0) {
-            update |= TEXTURE_UPDATE;
-        }
-
-        this.putUnsignedVarInt(update);
-        this.putByte(this.dimensionId);
-        this.putBoolean(this.isLocked);
-
-        if ((update & 0x08) != 0) { //TODO: find out what these are for
-            this.putUnsignedVarInt(eids.length);
-            for (int eid : eids) {
-                this.putEntityUniqueId(eid);
-            }
-        }
-        if ((update & (TEXTURE_UPDATE | DECORATIONS_UPDATE)) != 0) {
-            this.putByte(this.scale);
-        }
-
-        if ((update & DECORATIONS_UPDATE) != 0) {
-            this.putUnsignedVarInt(decorators.length);
-
-            for (MapDecorator decorator : decorators) {
-                this.putByte(decorator.rotation);
-                this.putByte(decorator.icon);
-                this.putByte(decorator.offsetX);
-                this.putByte(decorator.offsetZ);
-                this.putString(decorator.label);
-                this.putVarInt(decorator.color.getRGB());
-            }
-        }
-
-        if ((update & TEXTURE_UPDATE) != 0) {
-            this.putVarInt(width);
-            this.putVarInt(height);
-            this.putVarInt(offsetX);
-            this.putVarInt(offsetZ);
-
-            this.putUnsignedVarInt(width * height);
-
-            if (image != null) {
-                for (int y = 0; y < width; y++) {
-                    for (int x = 0; x < height; x++) {
-                        putUnsignedVarInt(Utils.toABGR(this.image.getRGB(x, y)));
-                    }
-                }
-
-                image.flush();
-            } else if (colors.length > 0) {
-                for (int color : colors) {
-                    putUnsignedVarInt(color);
-                }
-            }
-        }
-    }
-
-    public static class MapDecorator {
-        public byte rotation;
-        public byte icon;
-        public byte offsetX;
-        public byte offsetZ;
-        public String label;
-        public Color color;
-    }
+	companion object {
+		//update
+		const val TEXTURE_UPDATE = 2
+		const val DECORATIONS_UPDATE = 4
+		const val ENTITIES_UPDATE = 8
+	}
 }

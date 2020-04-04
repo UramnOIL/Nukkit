@@ -1,30 +1,36 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class ContainerClosePacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.CONTAINER_CLOSE_PACKET;
+class ContainerClosePacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var windowId = 0
 
-    public int windowId;
+	@Override
+	override fun decode() {
+		windowId = this.getByte() as Byte.toInt()
+	}
 
-    @Override
-    public void decode() {
-        this.windowId = (byte) this.getByte();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putByte(windowId.toByte())
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putByte((byte) this.windowId);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.CONTAINER_CLOSE_PACKET
+	}
 }

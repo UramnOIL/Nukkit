@@ -1,44 +1,47 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.Nukkit;
-import com.google.common.io.ByteStreams;
-import lombok.ToString;
-
-import java.io.InputStream;
+import cn.nukkit.Nukkit
+import com.google.common.io.ByteStreams
+import lombok.ToString
+import java.io.InputStream
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString(exclude = "tag")
-public class BiomeDefinitionListPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.BIOME_DEFINITION_LIST_PACKET;
+class BiomeDefinitionListPacket : DataPacket() {
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.BIOME_DEFINITION_LIST_PACKET
+		private val TAG: ByteArray?
 
-    private static final byte[] TAG;
+		init {
+			TAG = try {
+				val inputStream: InputStream = Nukkit::class.java.getClassLoader().getResourceAsStream("biome_definitions.dat")
+				if (cn.nukkit.network.protocol.inputStream == null) {
+					throw AssertionError("Could not find biome_definitions.dat")
+				}
+				ByteStreams.toByteArray(cn.nukkit.network.protocol.inputStream)
+			} catch (e: Exception) {
+				throw AssertionError("Error whilst loading biome_definitions.dat", e)
+			}
+		}
+	}
 
-    static {
-        try {
-            InputStream inputStream = Nukkit.class.getClassLoader().getResourceAsStream("biome_definitions.dat");
-            if (inputStream == null) {
-                throw new AssertionError("Could not find biome_definitions.dat");
-            }
-            //noinspection UnstableApiUsage
-            TAG = ByteStreams.toByteArray(inputStream);
-        } catch (Exception e) {
-            throw new AssertionError("Error whilst loading biome_definitions.dat", e);
-        }
-    }
+	var tag = TAG
 
-    public byte[] tag = TAG;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.put(tag);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.put(tag)
+	}
 }

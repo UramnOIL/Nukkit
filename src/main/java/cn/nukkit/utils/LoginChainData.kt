@@ -1,43 +1,26 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import java.util.UUID;
+import java.util.*
 
 /**
  * @author CreeperFace
  */
-public interface LoginChainData {
-
-    String getUsername();
-
-    UUID getClientUUID();
-
-    String getIdentityPublicKey();
-
-    long getClientId();
-
-    String getServerAddress();
-
-    String getDeviceModel();
-
-    int getDeviceOS();
-
-    String getDeviceId();
-
-    String getGameVersion();
-
-    int getGuiScale();
-
-    String getLanguageCode();
-
-    String getXUID();
-
-    boolean isXboxAuthed();
-
-    int getCurrentInputMode();
-
-    int getDefaultInputMode();
-
-    String getCapeData();
-
-    int getUIProfile();
+interface LoginChainData {
+	fun getUsername(): String?
+	fun getClientUUID(): UUID?
+	fun getIdentityPublicKey(): String?
+	fun getClientId(): Long
+	fun getServerAddress(): String?
+	fun getDeviceModel(): String?
+	fun getDeviceOS(): Int
+	fun getDeviceId(): String?
+	fun getGameVersion(): String?
+	fun getGuiScale(): Int
+	fun getLanguageCode(): String?
+	fun getXUID(): String?
+	fun isXboxAuthed(): Boolean
+	fun getCurrentInputMode(): Int
+	fun getDefaultInputMode(): Int
+	fun getCapeData(): String?
+	fun getUIProfile(): Int
 }

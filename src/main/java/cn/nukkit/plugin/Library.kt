@@ -1,14 +1,10 @@
-package cn.nukkit.plugin;
+package cn.nukkit.plugin
 
 /**
  * Created on 15-12-13.
  */
-public interface Library {
-
-    String getGroupId();
-
-    String getArtifactId();
-
-    String getVersion();
-
+interface Library {
+	fun getGroupId(): String
+	fun getArtifactId(): String
+	fun getVersion(): String
 }

@@ -1,151 +1,161 @@
-package cn.nukkit.nbt.stream;
+package cn.nukkit.nbt.stream
 
-import cn.nukkit.utils.VarInt;
-
-import java.io.DataOutput;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
+import cn.nukkit.utils.VarInt
+import java.io.DataOutput
+import java.io.DataOutputStream
+import java.io.IOException
+import java.io.OutputStream
+import java.nio.ByteOrder
+import java.nio.charset.StandardCharsets
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class NBTOutputStream implements DataOutput, AutoCloseable {
-    private final DataOutputStream stream;
-    private final ByteOrder endianness;
-    private final boolean network;
+class NBTOutputStream(stream: OutputStream, endianness: ByteOrder, network: Boolean) : DataOutput, AutoCloseable {
+	private val stream: DataOutputStream
+	private val endianness: ByteOrder
+	val isNetwork: Boolean
 
-    public NBTOutputStream(OutputStream stream) {
-        this(stream, ByteOrder.BIG_ENDIAN);
-    }
+	constructor(stream: OutputStream) : this(stream, ByteOrder.BIG_ENDIAN) {}
+	constructor(stream: OutputStream, endianness: ByteOrder) : this(stream, endianness, false) {}
 
-    public NBTOutputStream(OutputStream stream, ByteOrder endianness) {
-        this(stream, endianness, false);
-    }
+	fun getEndianness(): ByteOrder {
+		return endianness
+	}
 
-    public NBTOutputStream(OutputStream stream, ByteOrder endianness, boolean network) {
-        this.stream = stream instanceof DataOutputStream ? (DataOutputStream) stream : new DataOutputStream(stream);
-        this.endianness = endianness;
-        this.network = network;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun write(bytes: ByteArray?) {
+		stream.write(bytes)
+	}
 
-    public ByteOrder getEndianness() {
-        return endianness;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun write(b: ByteArray?, off: Int, len: Int) {
+		stream.write(b, off, len)
+	}
 
-    public boolean isNetwork() {
-        return network;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun write(b: Int) {
+		stream.write(b)
+	}
 
-    @Override
-    public void write(byte[] bytes) throws IOException {
-        this.stream.write(bytes);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeBoolean(v: Boolean) {
+		stream.writeBoolean(v)
+	}
 
-    @Override
-    public void write(byte[] b, int off, int len) throws IOException {
-        this.stream.write(b, off, len);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeByte(v: Int) {
+		stream.writeByte(v)
+	}
 
-    @Override
-    public void write(int b) throws IOException {
-        this.stream.write(b);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeShort(v: Int) {
+		var v = v
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			v = Integer.reverseBytes(v) shr 16
+		}
+		stream.writeShort(v)
+	}
 
-    @Override
-    public void writeBoolean(boolean v) throws IOException {
-        this.stream.writeBoolean(v);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeChar(v: Int) {
+		var v = v
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			v = Character.reverseBytes(v.toChar())
+		}
+		stream.writeChar(v)
+	}
 
-    @Override
-    public void writeByte(int v) throws IOException {
-        this.stream.writeByte(v);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeInt(v: Int) {
+		var v = v
+		if (isNetwork) {
+			VarInt.writeVarInt(stream, v)
+		} else {
+			if (endianness === ByteOrder.LITTLE_ENDIAN) {
+				v = Integer.reverseBytes(v)
+			}
+			stream.writeInt(v)
+		}
+	}
 
-    @Override
-    public void writeShort(int v) throws IOException {
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            v = Integer.reverseBytes(v) >> 16;
-        }
-        this.stream.writeShort(v);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeLong(v: Long) {
+		var v = v
+		if (isNetwork) {
+			VarInt.writeVarLong(stream, v)
+		} else {
+			if (endianness === ByteOrder.LITTLE_ENDIAN) {
+				v = Long.reverseBytes(v)
+			}
+			stream.writeLong(v)
+		}
+	}
 
-    @Override
-    public void writeChar(int v) throws IOException {
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            v = Character.reverseBytes((char) v);
-        }
-        this.stream.writeChar(v);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeFloat(v: Float) {
+		var i: Int = Float.floatToIntBits(v)
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			i = Integer.reverseBytes(i)
+		}
+		stream.writeInt(i)
+	}
 
-    @Override
-    public void writeInt(int v) throws IOException {
-        if (network) {
-            VarInt.writeVarInt(this.stream, v);
-        } else {
-            if (endianness == ByteOrder.LITTLE_ENDIAN) {
-                v = Integer.reverseBytes(v);
-            }
-            this.stream.writeInt(v);
-        }
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeDouble(v: Double) {
+		var l: Long = Double.doubleToLongBits(v)
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			l = Long.reverseBytes(l)
+		}
+		stream.writeLong(l)
+	}
 
-    @Override
-    public void writeLong(long v) throws IOException {
-        if (network) {
-            VarInt.writeVarLong(this.stream, v);
-        } else {
-            if (endianness == ByteOrder.LITTLE_ENDIAN) {
-                v = Long.reverseBytes(v);
-            }
-            this.stream.writeLong(v);
-        }
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeBytes(s: String?) {
+		stream.writeBytes(s)
+	}
 
-    @Override
-    public void writeFloat(float v) throws IOException {
-        int i = Float.floatToIntBits(v);
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            i = Integer.reverseBytes(i);
-        }
-        this.stream.writeInt(i);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeChars(s: String?) {
+		stream.writeChars(s)
+	}
 
-    @Override
-    public void writeDouble(double v) throws IOException {
-        long l = Double.doubleToLongBits(v);
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            l = Long.reverseBytes(l);
-        }
-        this.stream.writeLong(l);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun writeUTF(s: String) {
+		val bytes: ByteArray = s.getBytes(StandardCharsets.UTF_8)
+		if (isNetwork) {
+			VarInt.writeUnsignedVarInt(stream, bytes.size)
+		} else {
+			writeShort(bytes.size)
+		}
+		stream.write(bytes)
+	}
 
-    @Override
-    public void writeBytes(String s) throws IOException {
-        this.stream.writeBytes(s);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun close() {
+		stream.close()
+	}
 
-    @Override
-    public void writeChars(String s) throws IOException {
-        this.stream.writeChars(s);
-    }
-
-    @Override
-    public void writeUTF(String s) throws IOException {
-        byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
-        if (network) {
-            VarInt.writeUnsignedVarInt(stream, bytes.length);
-        } else {
-            this.writeShort(bytes.length);
-        }
-        this.stream.write(bytes);
-    }
-
-    @Override
-    public void close() throws IOException {
-        this.stream.close();
-    }
+	init {
+		this.stream = if (stream is DataOutputStream) stream as DataOutputStream else DataOutputStream(stream)
+		this.endianness = endianness
+		isNetwork = network
+	}
 }

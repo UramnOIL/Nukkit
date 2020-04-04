@@ -1,25 +1,20 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.protocol.Packet;
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class UNCONNECTED_PING_OPEN_CONNECTIONS extends UNCONNECTED_PING {
-    public static final byte ID = (byte) 0x02;
+class UNCONNECTED_PING_OPEN_CONNECTIONS : UNCONNECTED_PING() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return UNCONNECTED_PING_OPEN_CONNECTIONS()
+		}
+	}
 
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new UNCONNECTED_PING_OPEN_CONNECTIONS();
-        }
-
-    }
+	companion object {
+		const val iD = 0x02.toByte()
+	}
 }

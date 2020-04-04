@@ -1,46 +1,37 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.RakNet;
-import cn.nukkit.raknet.protocol.Packet;
+import cn.nukkit.raknet.RakNet
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class OPEN_CONNECTION_REQUEST_1 extends Packet {
-    public static final byte ID = (byte) 0x05;
+class OPEN_CONNECTION_REQUEST_1 : Packet() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	var protocol = RakNet.PROTOCOL
+	var mtuSize: Short = 0
+	override fun encode() {
+		super.encode()
+		put(RakNet.MAGIC)
+		putByte(protocol)
+		put(ByteArray(mtuSize - 18))
+	}
 
-    public byte protocol = RakNet.PROTOCOL;
-    public short mtuSize;
+	override fun decode() {
+		super.decode()
+		offset += 16 //skip magic bytes
+		protocol = this.byte
+		mtuSize = buffer!!.size.toShort()
+	}
 
-    @Override
-    public void encode() {
-        super.encode();
-        this.put(RakNet.MAGIC);
-        this.putByte(this.protocol);
-        this.put(new byte[this.mtuSize - 18]);
-    }
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return OPEN_CONNECTION_REQUEST_1()
+		}
+	}
 
-    @Override
-    public void decode() {
-        super.decode();
-        this.offset += 16; //skip magic bytes
-        this.protocol = this.getByte();
-        this.mtuSize = (short) this.buffer.length;
-    }
-
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new OPEN_CONNECTION_REQUEST_1();
-        }
-
-    }
-
+	companion object {
+		const val iD = 0x05.toByte()
+	}
 }

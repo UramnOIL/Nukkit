@@ -1,58 +1,61 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
-
-import java.util.UUID;
+import lombok.ToString
+import java.util.UUID
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString(exclude = "sha256")
-public class ResourcePackDataInfoPacket extends DataPacket {
+class ResourcePackDataInfoPacket : DataPacket() {
+	var packId: UUID? = null
+	var maxChunkSize = 0
+	var chunkCount = 0
+	var compressedPackSize: Long = 0
+	var sha256: ByteArray?
+	var premium = false
+	var type = TYPE_RESOURCE
 
-    public static final byte NETWORK_ID = ProtocolInfo.RESOURCE_PACK_DATA_INFO_PACKET;
+	@Override
+	override fun decode() {
+		packId = UUID.fromString(this.getString())
+		maxChunkSize = this.getLInt()
+		chunkCount = this.getLInt()
+		compressedPackSize = this.getLLong()
+		sha256 = this.getByteArray()
+		premium = this.getBoolean()
+		type = this.getByte()
+	}
 
-    public static final int TYPE_INVALID = 0;
-    public static final int TYPE_ADDON = 1;
-    public static final int TYPE_CACHED = 2;
-    public static final int TYPE_COPY_PROTECTED = 3;
-    public static final int TYPE_BEHAVIOR = 4;
-    public static final int TYPE_PERSONA_PIECE = 5;
-    public static final int TYPE_RESOURCE = 6;
-    public static final int TYPE_SKINS = 7;
-    public static final int TYPE_WORLD_TEMPLATE = 8;
-    public static final int TYPE_COUNT = 9;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putString(packId.toString())
+		this.putLInt(maxChunkSize)
+		this.putLInt(chunkCount)
+		this.putLLong(compressedPackSize)
+		this.putByteArray(sha256)
+		this.putBoolean(premium)
+		this.putByte(type.toByte())
+	}
 
-    public UUID packId;
-    public int maxChunkSize;
-    public int chunkCount;
-    public long compressedPackSize;
-    public byte[] sha256;
-    public boolean premium;
-    public int type = TYPE_RESOURCE;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void decode() {
-        this.packId = UUID.fromString(this.getString());
-        this.maxChunkSize = this.getLInt();
-        this.chunkCount = this.getLInt();
-        this.compressedPackSize = this.getLLong();
-        this.sha256 = this.getByteArray();
-        this.premium = this.getBoolean();
-        this.type = this.getByte();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putString(this.packId.toString());
-        this.putLInt(this.maxChunkSize);
-        this.putLInt(this.chunkCount);
-        this.putLLong(this.compressedPackSize);
-        this.putByteArray(this.sha256);
-        this.putBoolean(this.premium);
-        this.putByte((byte) this.type);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.RESOURCE_PACK_DATA_INFO_PACKET
+		const val TYPE_INVALID = 0
+		const val TYPE_ADDON = 1
+		const val TYPE_CACHED = 2
+		const val TYPE_COPY_PROTECTED = 3
+		const val TYPE_BEHAVIOR = 4
+		const val TYPE_PERSONA_PIECE = 5
+		const val TYPE_RESOURCE = 6
+		const val TYPE_SKINS = 7
+		const val TYPE_WORLD_TEMPLATE = 8
+		const val TYPE_COUNT = 9
+	}
 }

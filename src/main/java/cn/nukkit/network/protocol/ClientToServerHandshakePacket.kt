@@ -1,22 +1,24 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class ClientToServerHandshakePacket extends DataPacket {
+class ClientToServerHandshakePacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.CLIENT_TO_SERVER_HANDSHAKE_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.CLIENT_TO_SERVER_HANDSHAKE_PACKET;
-    }
+	@Override
+	override fun decode() {
+		//no content
+	}
 
-    @Override
-    public void decode() {
-        //no content
-    }
-
-    @Override
-    public void encode() {
-
-    }
+	@Override
+	override fun encode() {
+	}
 }

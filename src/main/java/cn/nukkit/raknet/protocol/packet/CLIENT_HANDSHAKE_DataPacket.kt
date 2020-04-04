@@ -1,54 +1,39 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.protocol.Packet;
-
-import java.net.InetSocketAddress;
+import cn.nukkit.raknet.protocol.Packet
+import java.net.InetSocketAddress
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class CLIENT_HANDSHAKE_DataPacket extends Packet {
-    public static final byte ID = (byte) 0x13;
+class CLIENT_HANDSHAKE_DataPacket : Packet() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	override var address: String? = null
+	var port = 0
+	val systemAddresses = arrayOfNulls<InetSocketAddress>(10)
+	var sendPing: Long = 0
+	var sendPong: Long = 0
+	override fun encode() {}
+	override fun decode() {
+		super.decode()
+		val addr = getAddress()
+		address = addr!!.hostString
+		port = addr!!.port
+		for (i in 0..9) {
+			systemAddresses[i] = getAddress()
+		}
+		sendPing = this.long
+		sendPong = this.long
+	}
 
-    public String address;
-    public int port;
-    public final InetSocketAddress[] systemAddresses = new InetSocketAddress[10];
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return CLIENT_HANDSHAKE_DataPacket()
+		}
+	}
 
-    public long sendPing;
-    public long sendPong;
-
-    @Override
-    public void encode() {
-    }
-
-    @Override
-    public void decode() {
-        super.decode();
-        InetSocketAddress addr = this.getAddress();
-        this.address = addr.getHostString();
-        this.port = addr.getPort();
-
-        for (int i = 0; i < 10; i++) {
-            this.systemAddresses[i] = this.getAddress();
-        }
-
-        this.sendPing = this.getLong();
-        this.sendPong = this.getLong();
-    }
-
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new CLIENT_HANDSHAKE_DataPacket();
-        }
-
-    }
-
+	companion object {
+		const val iD = 0x13.toByte()
+	}
 }

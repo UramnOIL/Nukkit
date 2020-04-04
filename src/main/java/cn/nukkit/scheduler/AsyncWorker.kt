@@ -1,53 +1,44 @@
-package cn.nukkit.scheduler;
+package cn.nukkit.scheduler
 
-import cn.nukkit.InterruptibleThread;
-
-import java.util.LinkedList;
+import cn.nukkit.InterruptibleThread
+import java.util.*
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class AsyncWorker extends Thread implements InterruptibleThread {
-    private final LinkedList<AsyncTask> stack = new LinkedList<>();
+class AsyncWorker : Thread(), InterruptibleThread {
+	private val stack = LinkedList<AsyncTask>()
+	fun stack(task: AsyncTask) {
+		synchronized(stack) { stack.addFirst(task) }
+	}
 
-    public AsyncWorker() {
-        this.setName("Asynchronous Worker");
-    }
+	fun unstack() {
+		synchronized(stack) { stack.clear() }
+	}
 
-    public void stack(AsyncTask task) {
-        synchronized (stack) {
-            stack.addFirst(task);
-        }
-    }
+	fun unstack(task: AsyncTask) {
+		synchronized(stack) { stack.remove(task) }
+	}
 
-    public void unstack() {
-        synchronized (stack) {
-            stack.clear();
-        }
-    }
+	override fun run() {
+		while (true) {
+			synchronized(stack) {
+				for (task in stack) {
+					if (!task.isFinished) {
+						task.run()
+					}
+				}
+			}
+			try {
+				sleep(5)
+			} catch (e: InterruptedException) {
+				//igonre
+			}
+		}
+	}
 
-    public void unstack(AsyncTask task) {
-        synchronized (stack) {
-            stack.remove(task);
-        }
-    }
-
-    public void run() {
-        while (true) {
-            synchronized (stack) {
-                for (AsyncTask task : stack) {
-                    if (!task.isFinished()) {
-                        task.run();
-                    }
-                }
-            }
-            try {
-                sleep(5);
-            } catch (InterruptedException e) {
-                //igonre
-            }
-        }
-    }
-
+	init {
+		name = "Asynchronous Worker"
+	}
 }

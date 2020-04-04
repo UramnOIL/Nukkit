@@ -1,27 +1,31 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class SetHealthPacket extends DataPacket {
+class SetHealthPacket : DataPacket() {
+	var health = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.SET_HEALTH_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public int health;
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putUnsignedVarInt(health)
+	}
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putUnsignedVarInt(this.health);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SET_HEALTH_PACKET
+	}
 }

@@ -1,70 +1,67 @@
-package cn.nukkit.network.rcon;
+package cn.nukkit.network.rcon
 
-import cn.nukkit.Server;
-import cn.nukkit.command.RemoteConsoleCommandSender;
-import cn.nukkit.event.server.RemoteServerCommandEvent;
-import cn.nukkit.utils.TextFormat;
-
-import java.io.IOException;
+import cn.nukkit.Server
+import cn.nukkit.command.RemoteConsoleCommandSender
+import cn.nukkit.event.server.RemoteServerCommandEvent
+import cn.nukkit.utils.TextFormat
+import java.io.IOException
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Implementation of Source RCON protocol.
  * https://developer.valvesoftware.com/wiki/Source_RCON_Protocol
- * <p>
+ *
+ *
  * Wrapper for RCONServer. Handles data.
  *
  * @author Tee7even
  */
-public class RCON {
-    private final Server server;
-    private final RCONServer serverThread;
+class RCON(server: Server?, password: String?, address: String?, port: Int) {
+	private val server: Server?
+	private var serverThread: RCONServer? = null
+	fun check() {
+		if (serverThread == null) {
+			return
+		} else if (!serverThread.isAlive()) {
+			return
+		}
+		var command: RCONCommand?
+		while (serverThread.receive().also({ command = it }) != null) {
+			val sender = RemoteConsoleCommandSender()
+			val event = RemoteServerCommandEvent(sender, command.getCommand())
+			server.pluginManager.callEvent(event)
+			if (!event.isCancelled()) {
+				server.dispatchCommand(sender, command.getCommand())
+			}
+			serverThread.respond(command!!.getSender(), command.getId(), TextFormat.clean(sender.getMessages()))
+		}
+	}
 
-    public RCON(Server server, String password, String address, int port) {
-        if (password.isEmpty()) {
-            throw new IllegalArgumentException("nukkit.server.rcon.emptyPasswordError");
-        }
+	fun close() {
+		try {
+			synchronized(serverThread) {
+				serverThread!!.close()
+				serverThread.wait(5000)
+			}
+		} catch (exception: InterruptedException) {
+			//
+		}
+	}
 
-        this.server = server;
-
-        try {
-            this.serverThread = new RCONServer(address, port, password);
-            this.serverThread.start();
-        } catch (IOException e) {
-            throw new IllegalArgumentException("nukkit.server.rcon.startupError", e);
-        }
-
-        this.server.getLogger().info(this.server.getLanguage().translateString("nukkit.server.rcon.running", new String[]{address, String.valueOf(port)}));
-    }
-
-    public void check() {
-        if (this.serverThread == null) {
-            return;
-        } else if (!this.serverThread.isAlive()) {
-            return;
-        }
-
-        RCONCommand command;
-        while ((command = serverThread.receive()) != null) {
-            RemoteConsoleCommandSender sender = new RemoteConsoleCommandSender();
-            RemoteServerCommandEvent event = new RemoteServerCommandEvent(sender, command.getCommand());
-            this.server.getPluginManager().callEvent(event);
-
-            if (!event.isCancelled()) {
-                this.server.dispatchCommand(sender, command.getCommand());
-            }
-
-            this.serverThread.respond(command.getSender(), command.getId(), TextFormat.clean(sender.getMessages()));
-        }
-    }
-
-    public void close() {
-        try {
-            synchronized (serverThread) {
-                serverThread.close();
-                serverThread.wait(5000);
-            }
-        } catch (InterruptedException exception) {
-            //
-        }
-    }
+	init {
+		if (password.isEmpty()) {
+			throw IllegalArgumentException("nukkit.server.rcon.emptyPasswordError")
+		}
+		this.server = server
+		try {
+			serverThread = RCONServer(address, port, password)
+			serverThread.start()
+		} catch (e: IOException) {
+			throw IllegalArgumentException("nukkit.server.rcon.startupError", e)
+		}
+		this.server.getLogger().info(this.server.getLanguage().translateString("nukkit.server.rcon.running", arrayOf(address, String.valueOf(port))))
+	}
 }

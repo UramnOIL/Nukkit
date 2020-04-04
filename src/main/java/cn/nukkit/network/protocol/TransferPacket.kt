@@ -1,29 +1,36 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class TransferPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.TRANSFER_PACKET;
+class TransferPacket : DataPacket() {
+	var address // Server address
+			: String? = null
+	var port = 19132 // Server port
 
-    public String address; // Server address
-    public int port = 19132; // Server port
+	@Override
+	override fun decode() {
+		address = this.getString()
+		port = this.getLShort() as Short.toInt()
+	}
 
-    @Override
-    public void decode() {
-        this.address = this.getString();
-        this.port = (short) this.getLShort();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putString(address)
+		this.putLShort(port)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putString(address);
-        this.putLShort(port);
-    }
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.TRANSFER_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.TRANSFER_PACKET;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.TRANSFER_PACKET
+	}
 }

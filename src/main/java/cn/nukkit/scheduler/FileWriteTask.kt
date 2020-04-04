@@ -1,57 +1,48 @@
-package cn.nukkit.scheduler;
+package cn.nukkit.scheduler
 
-import cn.nukkit.Server;
-import cn.nukkit.utils.Utils;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import cn.nukkit.Server
+import cn.nukkit.utils.Utils
+import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.nio.charset.StandardCharsets
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class FileWriteTask extends AsyncTask {
-    private final File file;
-    private final InputStream contents;
+class FileWriteTask : AsyncTask {
+	private val file: File
+	private val contents: InputStream
 
-    public FileWriteTask(String path, String contents) {
-        this(new File(path), contents);
-    }
+	constructor(path: String?, contents: String) : this(File(path), contents) {}
+	constructor(path: String?, contents: ByteArray?) : this(File(path), contents) {}
+	constructor(path: String?, contents: InputStream) {
+		file = File(path)
+		this.contents = contents
+	}
 
-    public FileWriteTask(String path, byte[] contents) {
-        this(new File(path), contents);
-    }
+	constructor(file: File, contents: String) {
+		this.file = file
+		this.contents = ByteArrayInputStream(contents.toByteArray(StandardCharsets.UTF_8))
+	}
 
-    public FileWriteTask(String path, InputStream contents) {
-        this.file = new File(path);
-        this.contents = contents;
-    }
+	constructor(file: File, contents: ByteArray?) {
+		this.file = file
+		this.contents = ByteArrayInputStream(contents)
+	}
 
-    public FileWriteTask(File file, String contents) {
-        this.file = file;
-        this.contents = new ByteArrayInputStream(contents.getBytes(StandardCharsets.UTF_8));
-    }
+	constructor(file: File, contents: InputStream) {
+		this.file = file
+		this.contents = contents
+	}
 
-    public FileWriteTask(File file, byte[] contents) {
-        this.file = file;
-        this.contents = new ByteArrayInputStream(contents);
-    }
-
-    public FileWriteTask(File file, InputStream contents) {
-        this.file = file;
-        this.contents = contents;
-    }
-
-    @Override
-    public void onRun() {
-        try {
-            Utils.writeFile(file, contents);
-        } catch (IOException e) {
-            Server.getInstance().getLogger().logException(e);
-        }
-    }
-
+	override fun onRun() {
+		try {
+			Utils.writeFile(file, contents)
+		} catch (e: IOException) {
+			Server.instance.logger.logException(e)
+		}
+	}
 }

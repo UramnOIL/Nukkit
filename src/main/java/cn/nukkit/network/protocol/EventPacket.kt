@@ -1,29 +1,31 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class EventPacket extends DataPacket {
+class EventPacket : DataPacket() {
+	var eid: Long = 0
+	var unknown1 = 0
+	var unknown2: Byte = 0
 
-    public long eid;
-    public int unknown1;
-    public byte unknown2;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.EVENT_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.EVENT_PACKET;
-    }
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarLong(this.eid);
-        this.putVarInt(this.unknown1);
-        this.putByte(this.unknown2);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarLong(eid)
+		this.putVarInt(unknown1)
+		this.putByte(unknown2)
+	}
 }

@@ -1,27 +1,29 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class ServerSettingsResponsePacket extends DataPacket {
+class ServerSettingsResponsePacket : DataPacket() {
+	var formId = 0
+	var data: String? = null
 
-    public int formId;
-    public String data;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.SERVER_SETTINGS_RESPONSE_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.SERVER_SETTINGS_RESPONSE_PACKET;
-    }
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarInt(this.formId);
-        this.putString(this.data);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarInt(formId)
+		this.putString(data)
+	}
 }

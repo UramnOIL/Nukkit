@@ -1,273 +1,215 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import cn.nukkit.block.Block;
-import cn.nukkit.level.Level;
-import cn.nukkit.math.BlockFace;
-import cn.nukkit.math.Vector3;
-
-import java.util.Iterator;
+import cn.nukkit.block.Block
+import cn.nukkit.level.Level
+import cn.nukkit.math.BlockFace
+import cn.nukkit.math.Vector3
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class BlockIterator implements Iterator<Block> {
-    private final Level level;
-    private final int maxDistance;
+class BlockIterator @JvmOverloads constructor(private val level: Level, start: Vector3, direction: Vector3, yOffset: Double = 0.0, private val maxDistance: Int = 0) : MutableIterator<Block?> {
+	private var end = false
+	private val blockQueue: Array<Block?>
+	private var currentBlock = 0
+	private var currentBlockObject: Block? = null
+	private var currentDistance: Int
+	private var maxDistanceInt = 0
+	private var secondError: Int
+	private var thirdError: Int
+	private val secondStep: Int
+	private val thirdStep: Int
+	private var mainFace: BlockFace? = null
+	private var secondFace: BlockFace? = null
+	private var thirdFace: BlockFace? = null
+	private fun blockEquals(a: Block?, b: Block): Boolean {
+		return a.x === b.x && a.y === b.y && a.z === b.z
+	}
 
-    private static final int gridSize = 1 << 24;
+	private fun getXFace(direction: Vector3): BlockFace {
+		return if (direction.x > 0) BlockFace.EAST else BlockFace.WEST
+	}
 
-    private boolean end = false;
+	private fun getYFace(direction: Vector3): BlockFace {
+		return if (direction.y > 0) BlockFace.UP else BlockFace.DOWN
+	}
 
-    private final Block[] blockQueue;
-    private int currentBlock = 0;
+	private fun getZFace(direction: Vector3): BlockFace {
+		return if (direction.z > 0) BlockFace.SOUTH else BlockFace.NORTH
+	}
 
-    private Block currentBlockObject = null;
-    private int currentDistance;
-    private int maxDistanceInt = 0;
+	private fun getXLength(direction: Vector3): Double {
+		return Math.abs(direction.x)
+	}
 
-    private int secondError;
-    private int thirdError;
+	private fun getYLength(direction: Vector3): Double {
+		return Math.abs(direction.y)
+	}
 
-    private final int secondStep;
-    private final int thirdStep;
+	private fun getZLength(direction: Vector3): Double {
+		return Math.abs(direction.z)
+	}
 
-    private BlockFace mainFace;
-    private BlockFace secondFace;
-    private BlockFace thirdFace;
+	private fun getPosition(direction: Double, position: Double, blockPosition: Double): Double {
+		return if (direction > 0) position - blockPosition else blockPosition + 1 - position
+	}
 
-    public BlockIterator(Level level, Vector3 start, Vector3 direction) {
-        this(level, start, direction, 0);
-    }
+	private fun getXPosition(direction: Vector3, position: Vector3, block: Block): Double {
+		return getPosition(direction.x, position.x, block.x)
+	}
 
-    public BlockIterator(Level level, Vector3 start, Vector3 direction, double yOffset) {
-        this(level, start, direction, yOffset, 0);
-    }
+	private fun getYPosition(direction: Vector3, position: Vector3, block: Block): Double {
+		return getPosition(direction.y, position.y, block.y)
+	}
 
-    public BlockIterator(Level level, Vector3 start, Vector3 direction, double yOffset, int maxDistance) {
-        this.level = level;
-        this.maxDistance = maxDistance;
-        this.blockQueue = new Block[3];
+	private fun getZPosition(direction: Vector3, position: Vector3, block: Block): Double {
+		return getPosition(direction.z, position.z, block.z)
+	}
 
-        Vector3 startClone = new Vector3(start.x, start.y, start.z);
-        startClone.y += yOffset;
+	override fun next(): Block? {
+		this.scan()
+		if (currentBlock <= -1) {
+			throw IndexOutOfBoundsException()
+		} else {
+			currentBlockObject = blockQueue[currentBlock--]
+		}
+		return currentBlockObject
+	}
 
-        this.currentDistance = 0;
+	override fun hasNext(): Boolean {
+		this.scan()
+		return currentBlock != -1
+	}
 
-        double mainDirection = 0;
-        double secondDirection = 0;
-        double thirdDirection = 0;
+	private fun scan() {
+		if (currentBlock >= 0) {
+			return
+		}
+		if (maxDistance != 0 && currentDistance > maxDistanceInt) {
+			end = true
+			return
+		}
+		if (end) {
+			return
+		}
+		++currentDistance
+		secondError += secondStep
+		thirdError += thirdStep
+		if (secondError > 0 && thirdError > 0) {
+			blockQueue[2] = blockQueue[0]!!.getSide(mainFace!!)
+			if (secondStep * thirdError < thirdStep * secondError) {
+				blockQueue[1] = blockQueue[2]!!.getSide(secondFace!!)
+				blockQueue[0] = blockQueue[1]!!.getSide(thirdFace!!)
+			} else {
+				blockQueue[1] = blockQueue[2]!!.getSide(thirdFace!!)
+				blockQueue[0] = blockQueue[1]!!.getSide(secondFace!!)
+			}
+			thirdError -= gridSize
+			secondError -= gridSize
+			currentBlock = 2
+		} else if (secondError > 0) {
+			blockQueue[1] = blockQueue[0]!!.getSide(mainFace!!)
+			blockQueue[0] = blockQueue[1]!!.getSide(secondFace!!)
+			secondError -= gridSize
+			currentBlock = 1
+		} else if (thirdError > 0) {
+			blockQueue[1] = blockQueue[0]!!.getSide(mainFace!!)
+			blockQueue[0] = blockQueue[1]!!.getSide(thirdFace!!)
+			thirdError -= gridSize
+			currentBlock = 1
+		} else {
+			blockQueue[0] = blockQueue[0]!!.getSide(mainFace!!)
+			currentBlock = 0
+		}
+	}
 
-        double mainPosition = 0;
-        double secondPosition = 0;
-        double thirdPosition = 0;
+	companion object {
+		private const val gridSize = 1 shl 24
+	}
 
-        Vector3 pos = new Vector3(startClone.x, startClone.y, startClone.z);
-        Block startBlock = this.level.getBlock(new Vector3(Math.floor(pos.x), Math.floor(pos.y), Math.floor(pos.z)));
-
-        if (this.getXLength(direction) > mainDirection) {
-            this.mainFace = this.getXFace(direction);
-            mainDirection = this.getXLength(direction);
-            mainPosition = this.getXPosition(direction, startClone, startBlock);
-
-            this.secondFace = this.getYFace(direction);
-            secondDirection = this.getYLength(direction);
-            secondPosition = this.getYPosition(direction, startClone, startBlock);
-
-            this.thirdFace = this.getZFace(direction);
-            thirdDirection = this.getZLength(direction);
-            thirdPosition = this.getZPosition(direction, startClone, startBlock);
-        }
-        if (this.getYLength(direction) > mainDirection) {
-            this.mainFace = this.getYFace(direction);
-            mainDirection = this.getYLength(direction);
-            mainPosition = this.getYPosition(direction, startClone, startBlock);
-
-            this.secondFace = this.getZFace(direction);
-            secondDirection = this.getZLength(direction);
-            secondPosition = this.getZPosition(direction, startClone, startBlock);
-
-            this.thirdFace = this.getXFace(direction);
-            thirdDirection = this.getXLength(direction);
-            thirdPosition = this.getXPosition(direction, startClone, startBlock);
-        }
-        if (this.getZLength(direction) > mainDirection) {
-            this.mainFace = this.getZFace(direction);
-            mainDirection = this.getZLength(direction);
-            mainPosition = this.getZPosition(direction, startClone, startBlock);
-
-            this.secondFace = this.getXFace(direction);
-            secondDirection = this.getXLength(direction);
-            secondPosition = this.getXPosition(direction, startClone, startBlock);
-
-            this.thirdFace = this.getYFace(direction);
-            thirdDirection = this.getYLength(direction);
-            thirdPosition = this.getYPosition(direction, startClone, startBlock);
-        }
-
-        double d = mainPosition / mainDirection;
-        double secondd = secondPosition - secondDirection * d;
-        double thirdd = thirdPosition - thirdDirection * d;
-
-        this.secondError = (int) Math.floor(secondd * gridSize);
-        this.secondStep = (int) Math.round(secondDirection / mainDirection * gridSize);
-        this.thirdError = (int) Math.floor(thirdd * gridSize);
-        this.thirdStep = (int) Math.round(thirdDirection / mainDirection * gridSize);
-
-        if (this.secondError + this.secondStep <= 0) {
-            this.secondError = -this.secondStep + 1;
-        }
-
-        if (this.thirdError + this.thirdStep <= 0) {
-            this.thirdError = -this.thirdStep + 1;
-        }
-
-        Block lastBlock = startBlock.getSide(this.mainFace.getOpposite());
-
-        if (this.secondError < 0) {
-            this.secondError += gridSize;
-            lastBlock = lastBlock.getSide(this.secondFace.getOpposite());
-        }
-
-        if (this.thirdError < 0) {
-            this.thirdError += gridSize;
-            lastBlock = lastBlock.getSide(this.thirdFace.getOpposite());
-        }
-
-        this.secondError -= gridSize;
-        this.thirdError -= gridSize;
-
-        this.blockQueue[0] = lastBlock;
-
-        this.currentBlock = -1;
-
-        this.scan();
-
-        boolean startBlockFound = false;
-
-        for (int cnt = this.currentBlock; cnt >= 0; --cnt) {
-            if (this.blockEquals(this.blockQueue[cnt], startBlock)) {
-                this.currentBlock = cnt;
-                startBlockFound = true;
-                break;
-            }
-        }
-
-        if (!startBlockFound) {
-            throw new IllegalStateException("Start block missed in BlockIterator");
-        }
-
-        this.maxDistanceInt = (int) Math.round(maxDistance / (Math.sqrt(mainDirection * mainDirection + secondDirection * secondDirection + thirdDirection * thirdDirection) / mainDirection));
-    }
-
-    private boolean blockEquals(Block a, Block b) {
-        return a.x == b.x && a.y == b.y && a.z == b.z;
-    }
-
-    private BlockFace getXFace(Vector3 direction) {
-        return ((direction.x) > 0) ? BlockFace.EAST : BlockFace.WEST;
-    }
-
-    private BlockFace getYFace(Vector3 direction) {
-        return ((direction.y) > 0) ? BlockFace.UP : BlockFace.DOWN;
-    }
-
-    private BlockFace getZFace(Vector3 direction) {
-        return ((direction.z) > 0) ? BlockFace.SOUTH : BlockFace.NORTH;
-    }
-
-    private double getXLength(Vector3 direction) {
-        return Math.abs(direction.x);
-    }
-
-    private double getYLength(Vector3 direction) {
-        return Math.abs(direction.y);
-    }
-
-    private double getZLength(Vector3 direction) {
-        return Math.abs(direction.z);
-    }
-
-    private double getPosition(double direction, double position, double blockPosition) {
-        return direction > 0 ? (position - blockPosition) : (blockPosition + 1 - position);
-    }
-
-    private double getXPosition(Vector3 direction, Vector3 position, Block block) {
-        return this.getPosition(direction.x, position.x, block.x);
-    }
-
-    private double getYPosition(Vector3 direction, Vector3 position, Block block) {
-        return this.getPosition(direction.y, position.y, block.y);
-    }
-
-    private double getZPosition(Vector3 direction, Vector3 position, Block block) {
-        return this.getPosition(direction.z, position.z, block.z);
-    }
-
-    @Override
-    public Block next() {
-        this.scan();
-
-        if (this.currentBlock <= -1) {
-            throw new IndexOutOfBoundsException();
-        } else {
-            this.currentBlockObject = this.blockQueue[this.currentBlock--];
-        }
-        return this.currentBlockObject;
-    }
-
-    @Override
-    public boolean hasNext() {
-        this.scan();
-        return this.currentBlock != -1;
-    }
-
-    private void scan() {
-        if (this.currentBlock >= 0) {
-            return;
-        }
-
-        if (this.maxDistance != 0 && this.currentDistance > this.maxDistanceInt) {
-            this.end = true;
-            return;
-        }
-
-        if (this.end) {
-            return;
-        }
-
-        ++this.currentDistance;
-
-        this.secondError += this.secondStep;
-        this.thirdError += this.thirdStep;
-
-        if (this.secondError > 0 && this.thirdError > 0) {
-            this.blockQueue[2] = this.blockQueue[0].getSide(this.mainFace);
-
-            if ((this.secondStep * this.thirdError) < (this.thirdStep * this.secondError)) {
-                this.blockQueue[1] = this.blockQueue[2].getSide(this.secondFace);
-                this.blockQueue[0] = this.blockQueue[1].getSide(this.thirdFace);
-            } else {
-                this.blockQueue[1] = this.blockQueue[2].getSide(this.thirdFace);
-                this.blockQueue[0] = this.blockQueue[1].getSide(this.secondFace);
-            }
-
-            this.thirdError -= gridSize;
-            this.secondError -= gridSize;
-            this.currentBlock = 2;
-        } else if (this.secondError > 0) {
-            this.blockQueue[1] = this.blockQueue[0].getSide(this.mainFace);
-            this.blockQueue[0] = this.blockQueue[1].getSide(this.secondFace);
-            this.secondError -= gridSize;
-            this.currentBlock = 1;
-        } else if (this.thirdError > 0) {
-            this.blockQueue[1] = this.blockQueue[0].getSide(this.mainFace);
-            this.blockQueue[0] = this.blockQueue[1].getSide(this.thirdFace);
-            this.thirdError -= gridSize;
-            this.currentBlock = 1;
-        } else {
-            this.blockQueue[0] = this.blockQueue[0].getSide(this.mainFace);
-            this.currentBlock = 0;
-        }
-    }
+	init {
+		blockQueue = arrayOfNulls(3)
+		val startClone = Vector3(start.x, start.y, start.z)
+		startClone.y += yOffset
+		currentDistance = 0
+		var mainDirection = 0.0
+		var secondDirection = 0.0
+		var thirdDirection = 0.0
+		var mainPosition = 0.0
+		var secondPosition = 0.0
+		var thirdPosition = 0.0
+		val pos = Vector3(startClone.x, startClone.y, startClone.z)
+		val startBlock = level.getBlock(Vector3(Math.floor(pos.x), Math.floor(pos.y), Math.floor(pos.z)))
+		if (getXLength(direction) > mainDirection) {
+			mainFace = getXFace(direction)
+			mainDirection = getXLength(direction)
+			mainPosition = getXPosition(direction, startClone, startBlock)
+			secondFace = getYFace(direction)
+			secondDirection = getYLength(direction)
+			secondPosition = getYPosition(direction, startClone, startBlock)
+			thirdFace = getZFace(direction)
+			thirdDirection = getZLength(direction)
+			thirdPosition = getZPosition(direction, startClone, startBlock)
+		}
+		if (getYLength(direction) > mainDirection) {
+			mainFace = getYFace(direction)
+			mainDirection = getYLength(direction)
+			mainPosition = getYPosition(direction, startClone, startBlock)
+			secondFace = getZFace(direction)
+			secondDirection = getZLength(direction)
+			secondPosition = getZPosition(direction, startClone, startBlock)
+			thirdFace = getXFace(direction)
+			thirdDirection = getXLength(direction)
+			thirdPosition = getXPosition(direction, startClone, startBlock)
+		}
+		if (getZLength(direction) > mainDirection) {
+			mainFace = getZFace(direction)
+			mainDirection = getZLength(direction)
+			mainPosition = getZPosition(direction, startClone, startBlock)
+			secondFace = getXFace(direction)
+			secondDirection = getXLength(direction)
+			secondPosition = getXPosition(direction, startClone, startBlock)
+			thirdFace = getYFace(direction)
+			thirdDirection = getYLength(direction)
+			thirdPosition = getYPosition(direction, startClone, startBlock)
+		}
+		val d = mainPosition / mainDirection
+		val secondd = secondPosition - secondDirection * d
+		val thirdd = thirdPosition - thirdDirection * d
+		secondError = Math.floor(secondd * gridSize).toInt()
+		secondStep = Math.round(secondDirection / mainDirection * gridSize).toInt()
+		thirdError = Math.floor(thirdd * gridSize).toInt()
+		thirdStep = Math.round(thirdDirection / mainDirection * gridSize).toInt()
+		if (secondError + secondStep <= 0) {
+			secondError = -secondStep + 1
+		}
+		if (thirdError + thirdStep <= 0) {
+			thirdError = -thirdStep + 1
+		}
+		var lastBlock = startBlock.getSide(mainFace!!.getOpposite()!!)
+		if (secondError < 0) {
+			secondError += gridSize
+			lastBlock = lastBlock.getSide(secondFace!!.getOpposite()!!)
+		}
+		if (thirdError < 0) {
+			thirdError += gridSize
+			lastBlock = lastBlock.getSide(thirdFace!!.getOpposite()!!)
+		}
+		secondError -= gridSize
+		thirdError -= gridSize
+		blockQueue[0] = lastBlock
+		currentBlock = -1
+		this.scan()
+		var startBlockFound = false
+		for (cnt in currentBlock downTo 0) {
+			if (blockEquals(blockQueue[cnt], startBlock)) {
+				currentBlock = cnt
+				startBlockFound = true
+				break
+			}
+		}
+		check(startBlockFound) { "Start block missed in BlockIterator" }
+		maxDistanceInt = Math.round(maxDistance / (Math.sqrt(mainDirection * mainDirection + secondDirection * secondDirection + thirdDirection * thirdDirection) / mainDirection)).toInt()
+	}
 }

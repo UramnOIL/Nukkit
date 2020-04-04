@@ -1,27 +1,21 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.protocol.DataPacket;
-import cn.nukkit.raknet.protocol.Packet;
+import cn.nukkit.raknet.protocol.DataPacket
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class DATA_PACKET_4 extends DataPacket {
-    public static final byte ID = (byte) 0x84;
+class DATA_PACKET_4 : DataPacket() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return DATA_PACKET_4()
+		}
+	}
 
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new DATA_PACKET_4();
-        }
-
-    }
-
+	companion object {
+		const val iD = 0x84.toByte()
+	}
 }

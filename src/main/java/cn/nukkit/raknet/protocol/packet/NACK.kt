@@ -1,27 +1,21 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.protocol.AcknowledgePacket;
-import cn.nukkit.raknet.protocol.Packet;
+import cn.nukkit.raknet.protocol.AcknowledgePacket
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class NACK extends AcknowledgePacket {
+class NACK : AcknowledgePacket() {
 
-    public static final byte ID = (byte) 0xa0;
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return NACK()
+		}
+	}
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
-
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new NACK();
-        }
-
-    }
+	companion object {
+		const val iD = 0xa0.toByte()
+	}
 }

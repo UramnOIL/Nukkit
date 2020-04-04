@@ -1,51 +1,46 @@
-package cn.nukkit.network;
+package cn.nukkit.network
 
-import cn.nukkit.Server;
-import cn.nukkit.scheduler.AsyncTask;
-import cn.nukkit.utils.Zlib;
-
-import java.util.ArrayList;
-import java.util.List;
+import cn.nukkit.Server
+import cn.nukkit.scheduler.AsyncTask
+import cn.nukkit.utils.Zlib
+import java.util.ArrayList
+import java.util.List
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class CompressBatchedPacket extends AsyncTask {
+class CompressBatchedPacket(var data: ByteArray?, targets: List<String?>?, level: Int, channel: Int) : AsyncTask() {
+	var level = 7
+	var finalData: ByteArray?
+	var channel = 0
+	var targets: List<String?>? = ArrayList()
 
-    public int level = 7;
-    public byte[] data;
-    public byte[] finalData;
-    public int channel = 0;
-    public List<String> targets = new ArrayList<>();
+	constructor(data: ByteArray?, targets: List<String?>?) : this(data, targets, 7) {}
+	constructor(data: ByteArray?, targets: List<String?>?, level: Int) : this(data, targets, level, 0) {}
 
-    public CompressBatchedPacket(byte[] data, List<String> targets) {
-        this(data, targets, 7);
-    }
+	@Override
+	fun onRun() {
+		try {
+			finalData = Zlib.deflate(data, level)
+			data = null
+		} catch (e: Exception) {
+			//ignore
+		}
+	}
 
-    public CompressBatchedPacket(byte[] data, List<String> targets, int level) {
-        this(data, targets, level, 0);
-    }
+	@Override
+	fun onCompletion(server: Server?) {
+		server.broadcastPacketsCallback(finalData, targets)
+	}
 
-    public CompressBatchedPacket(byte[] data, List<String> targets, int level, int channel) {
-        this.data = data;
-        this.targets = targets;
-        this.level = level;
-        this.channel = channel;
-    }
-
-    @Override
-    public void onRun() {
-        try {
-            this.finalData = Zlib.deflate(data, level);
-            this.data = null;
-        } catch (Exception e) {
-            //ignore
-        }
-    }
-
-    @Override
-    public void onCompletion(Server server) {
-        server.broadcastPacketsCallback(this.finalData, this.targets);
-    }
+	init {
+		this.targets = targets
+		this.level = level
+		this.channel = channel
+	}
 }

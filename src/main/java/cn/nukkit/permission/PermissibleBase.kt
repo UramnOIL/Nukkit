@@ -1,171 +1,113 @@
-package cn.nukkit.permission;
+package cn.nukkit.permission
 
-import cn.nukkit.Server;
-import cn.nukkit.plugin.Plugin;
-import cn.nukkit.utils.PluginException;
-import cn.nukkit.utils.ServerException;
-import co.aikar.timings.Timings;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import cn.nukkit.Server
+import cn.nukkit.plugin.Plugin
+import cn.nukkit.plugin.PluginBase
+import cn.nukkit.utils.PluginException
+import co.aikar.timings.Timings
+import java.util.HashMap
+import java.util.HashSet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class PermissibleBase implements Permissible {
+class PermissibleBase(private val opable: ServerOperator) : Permissible {
+	private var parent: Permissible? = null
+	private val attachments: MutableSet<PermissionAttachment> = HashSet()
+	override val permissions: MutableMap<String, PermissionAttachmentInfo> = HashMap()
 
-    ServerOperator opable = null;
+	init {
+		if(opable is Permissible) {
+			parent = opable
+		}
+	}
 
-    private Permissible parent = null;
+	override var isOp: Boolean
+		get() = opable.isOp
+		set(value) {
+			opable.isOp = value
+		}
 
-    private final Set<PermissionAttachment> attachments = new HashSet<>();
+	override val effectivePermissions: Map<String, Any>
+		get() = permissions
 
-    private final Map<String, PermissionAttachmentInfo> permissions = new HashMap<>();
+	override fun hasPermission(name: String): Boolean {
+		if(permissions.contains(name)) {
+			return permissions[name]!!.value
+		}
+		val perm = Server.instance.pluginManager.getPermission(name)
+		return if (perm != null) {
+			val permission: String = perm.default
+			Permission.DEFAULT_TRUE == permission || isOp && Permission.DEFAULT_OP == permission || !isOp && Permission.DEFAULT_NOT_OP == permission
+		} else {
+			Permission.DEFAULT_TRUE == Permission.DEFAULT_PERMISSION || isOp && Permission.DEFAULT_OP == Permission.DEFAULT_PERMISSION || !isOp && Permission.DEFAULT_NOT_OP.equals(Permission.DEFAULT_PERMISSION)
+		}
+	}
 
-    public PermissibleBase(ServerOperator opable) {
-        this.opable = opable;
-        if (opable instanceof Permissible) {
-            this.parent = (Permissible) opable;
-        }
-    }
+	override fun hasPermission(permission: Permission): Boolean {
+		return this.hasPermission(permission.name)
+	}
 
-    @Override
-    public boolean isOp() {
-        return this.opable != null && this.opable.isOp();
-    }
+	override fun addAttachment(plugin: Plugin, name: String?, value: Boolean?): PermissionAttachment {
+		if (!plugin.isEnabled) {
+			throw PluginException("Plugin " + plugin.description.name + " is disabled")
+		}
+		val result = PermissionAttachment(plugin, parent ?: this)
+		attachments.add(result)
+		if (name != null && value != null) {
+			result.setPermission(name, value)
+		}
+		recalculatePermissions()
+		return result
+	}
 
-    @Override
-    public void setOp(boolean value) {
-        if (this.opable == null) {
-            throw new ServerException("Cannot change op value as no ServerOperator is set");
-        } else {
-            this.opable.setOp(value);
-        }
-    }
+	@Override
+	override fun removeAttachment(attachment: PermissionAttachment) {
+		if (attachments.contains(attachment)) {
+			attachments.remove(attachment)
+			val ex = attachment.removalCallback
+			ex?.attachmentRemoved(attachment)
+			recalculatePermissions()
+		}
+	}
 
-    @Override
-    public boolean isPermissionSet(String name) {
-        return this.permissions.containsKey(name);
-    }
+	@Override
+	override fun recalculatePermissions() {
+		Timings.permissibleCalculationTimer.startTiming()
+		clearPermissions()
+		val defaults: Map<String, Permission> = Server.instance.pluginManager.getDefaultPermissions(isOp)
+		Server.instance.pluginManager.subscribeToDefaultPerms(isOp, parent ?: this)
+		defaults.values.forEach {
+			val name: String = it.name
+			permissions[name] = PermissionAttachmentInfo(parent ?: this, name, null, true)
+			Server.instance.pluginManager.subscribeToPermission(name, parent ?: this)
+			calculateChildPermissions(it.children, false, null)
+		}
+		for (attachment in attachments) {
+			calculateChildPermissions(attachment.permissions, false, attachment)
+		}
+		Timings.permissibleCalculationTimer.stopTiming()
+	}
 
-    @Override
-    public boolean isPermissionSet(Permission permission) {
-        return this.isPermissionSet(permission.getName());
-    }
+	fun clearPermissions() {
+		permissions.keys.forEach { name ->
+			Server.instance.pluginManager.unsubscribeFromPermission(name, parent ?: this)
+		}
+		Server.instance.pluginManager.unsubscribeFromDefaultPerms(false, parent ?: this)
+		Server.instance.pluginManager.unsubscribeFromDefaultPerms(true, parent ?: this)
+		permissions.clear()
+	}
 
-    @Override
-    public boolean hasPermission(String name) {
-        if (this.isPermissionSet(name)) {
-            return this.permissions.get(name).getValue();
-        }
-
-        Permission perm = Server.getInstance().getPluginManager().getPermission(name);
-
-        if (perm != null) {
-            String permission = perm.getDefault();
-
-            return Permission.DEFAULT_TRUE.equals(permission) || (this.isOp() && Permission.DEFAULT_OP.equals(permission)) || (!this.isOp() && Permission.DEFAULT_NOT_OP.equals(permission));
-        } else {
-            return Permission.DEFAULT_TRUE.equals(Permission.DEFAULT_PERMISSION) || (this.isOp() && Permission.DEFAULT_OP.equals(Permission.DEFAULT_PERMISSION)) || (!this.isOp() && Permission.DEFAULT_NOT_OP.equals(Permission.DEFAULT_PERMISSION));
-        }
-    }
-
-    @Override
-    public boolean hasPermission(Permission permission) {
-        return this.hasPermission(permission.getName());
-    }
-
-    @Override
-    public PermissionAttachment addAttachment(Plugin plugin) {
-        return this.addAttachment(plugin, null, null);
-    }
-
-    @Override
-    public PermissionAttachment addAttachment(Plugin plugin, String name) {
-        return this.addAttachment(plugin, name, null);
-    }
-
-    @Override
-    public PermissionAttachment addAttachment(Plugin plugin, String name, Boolean value) {
-        if (!plugin.isEnabled()) {
-            throw new PluginException("Plugin " + plugin.getDescription().getName() + " is disabled");
-        }
-
-        PermissionAttachment result = new PermissionAttachment(plugin, this.parent != null ? this.parent : this);
-        this.attachments.add(result);
-        if (name != null && value != null) {
-            result.setPermission(name, value);
-        }
-        this.recalculatePermissions();
-
-        return result;
-    }
-
-    @Override
-    public void removeAttachment(PermissionAttachment attachment) {
-        if (this.attachments.contains(attachment)) {
-            this.attachments.remove(attachment);
-            PermissionRemovedExecutor ex = attachment.getRemovalCallback();
-            if (ex != null) {
-                ex.attachmentRemoved(attachment);
-            }
-            this.recalculatePermissions();
-        }
-    }
-
-    @Override
-    public void recalculatePermissions() {
-        Timings.permissibleCalculationTimer.startTiming();
-
-        this.clearPermissions();
-        Map<String, Permission> defaults = Server.getInstance().getPluginManager().getDefaultPermissions(this.isOp());
-        Server.getInstance().getPluginManager().subscribeToDefaultPerms(this.isOp(), this.parent != null ? this.parent : this);
-
-        for (Permission perm : defaults.values()) {
-            String name = perm.getName();
-            this.permissions.put(name, new PermissionAttachmentInfo(this.parent != null ? this.parent : this, name, null, true));
-            Server.getInstance().getPluginManager().subscribeToPermission(name, this.parent != null ? this.parent : this);
-            this.calculateChildPermissions(perm.getChildren(), false, null);
-        }
-
-        for (PermissionAttachment attachment : this.attachments) {
-            this.calculateChildPermissions(attachment.getPermissions(), false, attachment);
-        }
-        Timings.permissibleCalculationTimer.stopTiming();
-    }
-
-    public void clearPermissions() {
-        for (String name : this.permissions.keySet()) {
-            Server.getInstance().getPluginManager().unsubscribeFromPermission(name, this.parent != null ? this.parent : this);
-        }
-
-
-        Server.getInstance().getPluginManager().unsubscribeFromDefaultPerms(false, this.parent != null ? this.parent : this);
-        Server.getInstance().getPluginManager().unsubscribeFromDefaultPerms(true, this.parent != null ? this.parent : this);
-
-        this.permissions.clear();
-    }
-
-    private void calculateChildPermissions(Map<String, Boolean> children, boolean invert, PermissionAttachment attachment) {
-        for (Map.Entry<String, Boolean> entry : children.entrySet()) {
-            String name = entry.getKey();
-            Permission perm = Server.getInstance().getPluginManager().getPermission(name);
-            boolean v = entry.getValue();
-            boolean value = (v ^ invert);
-            this.permissions.put(name, new PermissionAttachmentInfo(this.parent != null ? this.parent : this, name, attachment, value));
-            Server.getInstance().getPluginManager().subscribeToPermission(name, this.parent != null ? this.parent : this);
-
-            if (perm != null) {
-                this.calculateChildPermissions(perm.getChildren(), !value, attachment);
-            }
-        }
-    }
-
-    @Override
-    public Map<String, PermissionAttachmentInfo> getEffectivePermissions() {
-        return this.permissions;
-    }
+	private fun calculateChildPermissions(children: Map<String, Boolean>, invert: Boolean, attachment: PermissionAttachment?) {
+		children.forEach { (name, u) ->
+			val perm = Server.instance.pluginManager.getPermission(name)
+			val value = u xor invert
+			permissions[name] = PermissionAttachmentInfo(parent ?: this, name, attachment, value)
+			Server.instance.pluginManager.subscribeToPermission(name, parent ?: this)
+			if (perm != null) {
+				calculateChildPermissions(perm.children, !value, attachment)
+			}
+		}
+	}
 }

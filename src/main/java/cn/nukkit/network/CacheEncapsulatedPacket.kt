@@ -1,25 +1,28 @@
-package cn.nukkit.network;
+package cn.nukkit.network
 
-import cn.nukkit.raknet.protocol.EncapsulatedPacket;
+import cn.nukkit.raknet.protocol.EncapsulatedPacket
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class CacheEncapsulatedPacket extends EncapsulatedPacket {
+class CacheEncapsulatedPacket : EncapsulatedPacket() {
+	var internalData: ByteArray? = null
 
-    public byte[] internalData = null;
+	@Override
+	fun toBinary(): ByteArray? {
+		return this.toBinary(false)
+	}
 
-    @Override
-    public byte[] toBinary() {
-        return this.toBinary(false);
-    }
-
-    @Override
-    public byte[] toBinary(boolean internal) {
-        if (this.internalData == null) {
-            this.internalData = super.toBinary(internal);
-        }
-        return this.internalData;
-    }
+	@Override
+	fun toBinary(internal: Boolean): ByteArray? {
+		if (internalData == null) {
+			internalData = super.toBinary(internal)
+		}
+		return internalData
+	}
 }

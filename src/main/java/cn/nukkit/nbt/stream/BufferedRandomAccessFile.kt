@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,48 +15,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cn.nukkit.nbt.stream;
+package cn.nukkit.nbt.stream
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.Arrays;
-
+import java.io.File
+import java.io.FileNotFoundException
+import java.io.IOException
+import java.io.RandomAccessFile
+import java.util.Arrays
+import kotlin.jvm.Throws
 
 /**
- * A <code>BufferedRandomAccessFile</code> is like a
- * <code>RandomAccessFile</code>, but it uses a private buffer so that most
+ * A `BufferedRandomAccessFile` is like a
+ * `RandomAccessFile`, but it uses a private buffer so that most
  * operations do not require a disk access.
  * <P>
  *
  * Note: The operations on this class are unmonitored. Also, the correct
- * functioning of the <code>RandomAccessFile</code> methods that are not
+ * functioning of the `RandomAccessFile` methods that are not
  * overridden here relies on the implementation of those methods in the
  * superclass.
  * Author : Avinash Lakshman ( alakshman@facebook.com) &amp; Prashant Malik ( pmalik@facebook.com )
- */
-
-public class BufferedRandomAccessFile extends RandomAccessFile
-{
-    static final int LogBuffSz_ = 16; // 64K buffer
-    public static final int BuffSz_ = (1 << LogBuffSz_);
-    static final long BuffMask_ = ~(((long) BuffSz_) - 1L);
-
-    /*
+</P> */
+class BufferedRandomAccessFile : RandomAccessFile {
+	/*
      * This implementation is based on the buffer implementation in Modula-3's
      * "Rd", "Wr", "RdClass", and "WrClass" interfaces.
      */
-    private boolean dirty_; // true iff unflushed bytes exist
-    private boolean closed_; // true iff the file is closed
-    private long curr_; // current position in file
-    private long lo_, hi_; // bounds on characters in "buff"
-    private byte[] buff_; // local buffer
-    private long maxHi_; // this.lo + this.buff.length
-    private boolean hitEOF_; // buffer contains last file block?
-    private long diskPos_; // disk position
+	private var dirty_ // true iff unflushed bytes exist
+			= false
+	private var closed_ // true iff the file is closed
+			= false
 
-    /*
+	@get:Override
+	var filePointer // current position in file
+			: Long = 0
+		private set
+	private var lo_: Long = 0
+	private var hi_ // bounds on characters in "buff"
+			: Long = 0
+	private var buff_ // local buffer
+			: ByteArray
+	private var maxHi_ // this.lo + this.buff.length
+			: Long = 0
+	private var hitEOF_ // buffer contains last file block?
+			= false
+	private var diskPos_ // disk position
+			: Long = 0
+	/*
      * To describe the above fields, we introduce the following abstractions for
      * the file "f":
      *
@@ -108,109 +113,97 @@ public class BufferedRandomAccessFile extends RandomAccessFile
      * by reading or writing the in-memory buffer without performing a disk
      * operation.
      */
+	/**
+	 * Open a new `BufferedRandomAccessFile` on `file`
+	 * in mode `mode`, which should be "r" for reading only, or
+	 * "rw" for reading and writing.
+	 */
+	constructor(file: File?, mode: String?) : super(file, mode) {
+		init(0)
+	}
 
-    /**
-     * Open a new <code>BufferedRandomAccessFile</code> on <code>file</code>
-     * in mode <code>mode</code>, which should be "r" for reading only, or
-     * "rw" for reading and writing.
-     */
-    public BufferedRandomAccessFile(File file, String mode) throws IOException
-    {
-        super(file, mode);
-        this.init(0);
-    }
+	constructor(file: File?, mode: String?, size: Int) : super(file, mode) {
+		init(size)
+	}
 
-    public BufferedRandomAccessFile(File file, String mode, int size) throws IOException
-    {
-        super(file, mode);
-        this.init(size);
-    }
+	/**
+	 * Open a new `BufferedRandomAccessFile` on the file named
+	 * `name` in mode `mode`, which should be "r" for
+	 * reading only, or "rw" for reading and writing.
+	 */
+	constructor(name: String?, mode: String?) : super(name, mode) {
+		init(0)
+	}
 
-    /**
-     * Open a new <code>BufferedRandomAccessFile</code> on the file named
-     * <code>name</code> in mode <code>mode</code>, which should be "r" for
-     * reading only, or "rw" for reading and writing.
-     */
-    public BufferedRandomAccessFile(String name, String mode) throws IOException
-    {
-        super(name, mode);
-        this.init(0);
-    }
+	constructor(name: String?, mode: String?, size: Int) : super(name, mode) {
+		init(size)
+	}
 
-    public BufferedRandomAccessFile(String name, String mode, int size) throws FileNotFoundException
-    {
-        super(name, mode);
-        this.init(size);
-    }
+	private fun init(size: Int) {
+		closed_ = false
+		dirty_ = closed_
+		hi_ = 0
+		filePointer = hi_
+		lo_ = filePointer
+		buff_ = if (size > BuffSz_) ByteArray(size) else ByteArray(BuffSz_)
+		maxHi_ = BuffSz_.toLong()
+		hitEOF_ = false
+		diskPos_ = 0L
+	}
 
-    private void init(int size)
-    {
-        this.dirty_ = this.closed_ = false;
-        this.lo_ = this.curr_ = this.hi_ = 0;
-        this.buff_ = (size > BuffSz_) ? new byte[size] : new byte[BuffSz_];
-        this.maxHi_ = (long) BuffSz_;
-        this.hitEOF_ = false;
-        this.diskPos_ = 0L;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun close() {
+		flush()
+		closed_ = true
+		super.close()
+	}
 
-    @Override
-    public void close() throws IOException
-    {
-        this.flush();
-        this.closed_ = true;
-        super.close();
-    }
+	/**
+	 * Flush any bytes in the file's buffer that have not yet been written to
+	 * disk. If the file was created read-only, this method is a no-op.
+	 */
+	@Throws(IOException::class)
+	fun flush() {
+		flushBuffer()
+	}
 
-    /**
-     * Flush any bytes in the file's buffer that have not yet been written to
-     * disk. If the file was created read-only, this method is a no-op.
-     */
-    public void flush() throws IOException
-    {
-        this.flushBuffer();
-    }
+	/* Flush any dirty bytes in the buffer to disk. */
+	@Throws(IOException::class)
+	private fun flushBuffer() {
+		if (dirty_) {
+			if (diskPos_ != lo_) super.seek(lo_)
+			val len = (filePointer - lo_).toInt()
+			super.write(buff_, 0, len)
+			diskPos_ = filePointer
+			dirty_ = false
+		}
+	}
 
-    /* Flush any dirty bytes in the buffer to disk. */
-    private void flushBuffer() throws IOException
-    {
-        if (this.dirty_)
-        {
-            if (this.diskPos_ != this.lo_)
-                super.seek(this.lo_);
-            int len = (int) (this.curr_ - this.lo_);
-            super.write(this.buff_, 0, len);
-            this.diskPos_ = this.curr_;
-            this.dirty_ = false;
-        }
-    }
-
-    /*
+	/*
      * Read at most "this.buff.length" bytes into "this.buff", returning the
      * number of bytes read. If the return result is less than
      * "this.buff.length", then EOF was read.
      */
-    private int fillBuffer() throws IOException
-    {
-        int cnt = 0;
-        int rem = this.buff_.length;
-        while (rem > 0)
-        {
-            int n = super.read(this.buff_, cnt, rem);
-            if (n < 0)
-                break;
-            cnt += n;
-            rem -= n;
-        }
-        if ( (cnt < 0) && (this.hitEOF_ = (cnt < this.buff_.length)) )
-        {
-            // make sure buffer that wasn't read is initialized with -1
-            Arrays.fill(this.buff_, cnt, this.buff_.length, (byte) 0xff);
-        }
-        this.diskPos_ += cnt;
-        return cnt;
-    }
+	@Throws(IOException::class)
+	private fun fillBuffer(): Int {
+		var cnt = 0
+		var rem = buff_.size
+		while (rem > 0) {
+			val n: Int = super.read(buff_, cnt, rem)
+			if (n < 0) break
+			cnt += n
+			rem -= n
+		}
+		if (cnt < 0 && (cnt < buff_.size).also { hitEOF_ = it }) {
+			// make sure buffer that wasn't read is initialized with -1
+			Arrays.fill(buff_, cnt, buff_.size, 0xff.toByte())
+		}
+		diskPos_ += cnt.toLong()
+		return cnt
+	}
 
-    /*
+	/*
      * This method positions <code>this.curr</code> at position <code>pos</code>.
      * If <code>pos</code> does not fall in the current buffer, it flushes the
      * current buffer and loads the correct one.<p>
@@ -219,249 +212,219 @@ public class BufferedRandomAccessFile extends RandomAccessFile
      * is at or past the end-of-file, which can only happen if the file was
      * opened in read-only mode.
      */
-    @Override
-    public void seek(long pos) throws IOException
-    {
-        if (pos >= this.hi_ || pos < this.lo_)
-        {
-            // seeking outside of current buffer -- flush and read
-            this.flushBuffer();
-            this.lo_ = pos & BuffMask_; // start at BuffSz boundary
-            this.maxHi_ = this.lo_ + (long) this.buff_.length;
-            if (this.diskPos_ != this.lo_)
-            {
-                super.seek(this.lo_);
-                this.diskPos_ = this.lo_;
-            }
-            int n = this.fillBuffer();
-            this.hi_ = this.lo_ + (long) n;
-        }
-        else
-        {
-            // seeking inside current buffer -- no read required
-            if (pos < this.curr_)
-            {
-                // if seeking backwards, we must flush to maintain V4
-                this.flushBuffer();
-            }
-        }
-        this.curr_ = pos;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun seek(pos: Long) {
+		if (pos >= hi_ || pos < lo_) {
+			// seeking outside of current buffer -- flush and read
+			flushBuffer()
+			lo_ = pos and BuffMask_ // start at BuffSz boundary
+			maxHi_ = lo_ + buff_.size.toLong()
+			if (diskPos_ != lo_) {
+				super.seek(lo_)
+				diskPos_ = lo_
+			}
+			val n = fillBuffer()
+			hi_ = lo_ + n.toLong()
+		} else {
+			// seeking inside current buffer -- no read required
+			if (pos < filePointer) {
+				// if seeking backwards, we must flush to maintain V4
+				flushBuffer()
+			}
+		}
+		filePointer = pos
+	}
 
-    /*
+	/*
      * Does not maintain V4 (i.e. buffer differs from disk contents if previously written to)
      *  - Assumes no writes were made
      * @param pos
      * @throws IOException
      */
-    public void seekUnsafe(long pos) throws IOException
-    {
-        if (pos >= this.hi_ || pos < this.lo_)
-        {
-            // seeking outside of current buffer -- flush and read
-            this.flushBuffer();
-            this.lo_ = pos & BuffMask_; // start at BuffSz boundary
-            this.maxHi_ = this.lo_ + (long) this.buff_.length;
-            if (this.diskPos_ != this.lo_)
-            {
-                super.seek(this.lo_);
-                this.diskPos_ = this.lo_;
-            }
-            int n = this.fillBuffer();
-            this.hi_ = this.lo_ + (long) n;
-        }
-        this.curr_ = pos;
-    }
+	@Throws(IOException::class)
+	fun seekUnsafe(pos: Long) {
+		if (pos >= hi_ || pos < lo_) {
+			// seeking outside of current buffer -- flush and read
+			flushBuffer()
+			lo_ = pos and BuffMask_ // start at BuffSz boundary
+			maxHi_ = lo_ + buff_.size.toLong()
+			if (diskPos_ != lo_) {
+				super.seek(lo_)
+				diskPos_ = lo_
+			}
+			val n = fillBuffer()
+			hi_ = lo_ + n.toLong()
+		}
+		filePointer = pos
+	}
 
-    @Override
-    public long getFilePointer()
-    {
-        return this.curr_;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun length(): Long {
+		return Math.max(filePointer, super.length())
+	}
 
-    @Override
-    public long length() throws IOException
-    {
-        return Math.max(this.curr_, super.length());
-    }
+	@Override
+	@Throws(IOException::class)
+	fun read(): Int {
+		if (filePointer >= hi_) {
+			// test for EOF
+			// if (this.hi < this.maxHi) return -1;
+			if (hitEOF_) return -1
 
-    @Override
-    public int read() throws IOException
-    {
-        if (this.curr_ >= this.hi_)
-        {
-            // test for EOF
-            // if (this.hi < this.maxHi) return -1;
-            if (this.hitEOF_)
-                return -1;
+			// slow path -- read another buffer
+			seek(filePointer)
+			if (filePointer == hi_) return -1
+		}
+		val res = buff_[(filePointer - lo_).toInt()]
+		filePointer++
+		return res.toInt() and 0xFF // convert byte -> int
+	}
 
-            // slow path -- read another buffer
-            this.seek(this.curr_);
-            if (this.curr_ == this.hi_)
-                return -1;
-        }
-        byte res = this.buff_[(int) (this.curr_ - this.lo_)];
-        this.curr_++;
-        return ((int) res) & 0xFF; // convert byte -> int
-    }
+	@Throws(IOException::class)
+	fun read1(): Byte {
+		if (filePointer >= hi_) {
+			// test for EOF
+			// if (this.hi < this.maxHi) return -1;
+			if (hitEOF_) return -1
 
-    public byte read1() throws IOException {
-        if (this.curr_ >= this.hi_)
-        {
-            // test for EOF
-            // if (this.hi < this.maxHi) return -1;
-            if (this.hitEOF_)
-                return -1;
+			// slow path -- read another buffer
+			seek(filePointer)
+			if (filePointer == hi_) return -1
+		}
+		return buff_[(filePointer++ - lo_).toInt()]
+	}
 
-            // slow path -- read another buffer
-            this.seek(this.curr_);
-            if (this.curr_ == this.hi_)
-                return -1;
-        }
-        byte res = this.buff_[(int) (this.curr_++ - this.lo_)];
-        return res;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun read(b: ByteArray): Int {
+		return this.read(b, 0, b.size)
+	}
 
-    @Override
-    public int read(byte[] b) throws IOException
-    {
-        return this.read(b, 0, b.length);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun read(b: ByteArray?, off: Int, len: Int): Int {
+		var len = len
+		if (filePointer >= hi_) {
+			// test for EOF
+			// if (this.hi < this.maxHi) return -1;
+			if (hitEOF_) return -1
 
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException
-    {
-        if (this.curr_ >= this.hi_)
-        {
-            // test for EOF
-            // if (this.hi < this.maxHi) return -1;
-            if (this.hitEOF_)
-                return -1;
+			// slow path -- read another buffer
+			seek(filePointer)
+			if (filePointer == hi_) return -1
+		}
+		len = Math.min(len, (hi_ - filePointer).toInt())
+		val buffOff = (filePointer - lo_).toInt()
+		System.arraycopy(buff_, buffOff, b, off, len)
+		filePointer += len.toLong()
+		return len
+	}
 
-            // slow path -- read another buffer
-            this.seek(this.curr_);
-            if (this.curr_ == this.hi_)
-                return -1;
-        }
-        len = Math.min(len, (int) (this.hi_ - this.curr_));
-        int buffOff = (int) (this.curr_ - this.lo_);
-        System.arraycopy(this.buff_, buffOff, b, off, len);
-        this.curr_ += len;
-        return len;
-    }
+	@Throws(IOException::class)
+	fun readCurrent(): Byte {
+		if (filePointer >= hi_) {
+			// test for EOF
+			// if (this.hi < this.maxHi) return -1;
+			if (hitEOF_) return -1
 
-    public byte readCurrent() throws IOException {
-        if (this.curr_ >= this.hi_)
-        {
-            // test for EOF
-            // if (this.hi < this.maxHi) return -1;
-            if (this.hitEOF_)
-                return -1;
+			// slow path -- read another buffer
+			seek(filePointer)
+			if (filePointer == hi_) return -1
+		}
+		return buff_[(filePointer - lo_).toInt()]
+	}
 
-            // slow path -- read another buffer
-            this.seek(this.curr_);
-            if (this.curr_ == this.hi_)
-                return -1;
-        }
-        byte res = this.buff_[(int) (this.curr_ - this.lo_)];
-        return res;
-    }
+	@Throws(IOException::class)
+	fun writeCurrent(b: Byte) {
+		if (filePointer >= hi_) {
+			if (hitEOF_ && hi_ < maxHi_) {
+				// at EOF -- bump "hi"
+				hi_++
+			} else {
+				// slow path -- write current buffer; read next one
+				seek(filePointer)
+				if (filePointer == hi_) {
+					// appending to EOF -- bump "hi"
+					hi_++
+				}
+			}
+		}
+		buff_[(filePointer - lo_).toInt()] = b
+		dirty_ = true
+	}
 
-    public void writeCurrent(byte b) throws IOException {
-        if (this.curr_ >= this.hi_)
-        {
-            if (this.hitEOF_ && this.hi_ < this.maxHi_)
-            {
-                // at EOF -- bump "hi"
-                this.hi_++;
-            }
-            else
-            {
-                // slow path -- write current buffer; read next one
-                this.seek(this.curr_);
-                if (this.curr_ == this.hi_)
-                {
-                    // appending to EOF -- bump "hi"
-                    this.hi_++;
-                }
-            }
-        }
-        this.buff_[(int) (this.curr_ - this.lo_)] = b;
-        this.dirty_ = true;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun write(b: Int) {
+		if (filePointer >= hi_) {
+			if (hitEOF_ && hi_ < maxHi_) {
+				// at EOF -- bump "hi"
+				hi_++
+			} else {
+				// slow path -- write current buffer; read next one
+				seek(filePointer)
+				if (filePointer == hi_) {
+					// appending to EOF -- bump "hi"
+					hi_++
+				}
+			}
+		}
+		buff_[(filePointer - lo_).toInt()] = b.toByte()
+		filePointer++
+		dirty_ = true
+	}
 
-    @Override
-    public void write(int b) throws IOException
-    {
-        if (this.curr_ >= this.hi_)
-        {
-            if (this.hitEOF_ && this.hi_ < this.maxHi_)
-            {
-                // at EOF -- bump "hi"
-                this.hi_++;
-            }
-            else
-            {
-                // slow path -- write current buffer; read next one
-                this.seek(this.curr_);
-                if (this.curr_ == this.hi_)
-                {
-                    // appending to EOF -- bump "hi"
-                    this.hi_++;
-                }
-            }
-        }
-        this.buff_[(int) (this.curr_ - this.lo_)] = (byte) b;
-        this.curr_++;
-        this.dirty_ = true;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun write(b: ByteArray) {
+		this.write(b, 0, b.size)
+	}
 
-    @Override
-    public void write(byte[] b) throws IOException
-    {
-        this.write(b, 0, b.length);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun write(b: ByteArray, off: Int, len: Int) {
+		var off = off
+		var len = len
+		while (len > 0) {
+			val n = writeAtMost(b, off, len)
+			off += n
+			len -= n
+			dirty_ = true
+		}
+	}
 
-    @Override
-    public void write(byte[] b, int off, int len) throws IOException
-    {
-        while (len > 0)
-        {
-            int n = this.writeAtMost(b, off, len);
-            off += n;
-            len -= n;
-            this.dirty_ = true;
-        }
-    }
-
-    /*
+	/*
      * Write at most "len" bytes to "b" starting at position "off", and return
      * the number of bytes written.
      */
-    private int writeAtMost(byte[] b, int off, int len) throws IOException
-    {
-        if (this.curr_ >= this.hi_)
-        {
-            if (this.hitEOF_ && this.hi_ < this.maxHi_)
-            {
-                // at EOF -- bump "hi"
-                this.hi_ = this.maxHi_;
-            }
-            else
-            {
-                // slow path -- write current buffer; read next one
-                this.seek(this.curr_);
-                if (this.curr_ == this.hi_)
-                {
-                    // appending to EOF -- bump "hi"
-                    this.hi_ = this.maxHi_;
-                }
-            }
-        }
-        len = Math.min(len, (int) (this.hi_ - this.curr_));
-        int buffOff = (int) (this.curr_ - this.lo_);
-        System.arraycopy(b, off, this.buff_, buffOff, len);
-        this.curr_ += len;
-        return len;
-    }
+	@Throws(IOException::class)
+	private fun writeAtMost(b: ByteArray, off: Int, len: Int): Int {
+		var len = len
+		if (filePointer >= hi_) {
+			if (hitEOF_ && hi_ < maxHi_) {
+				// at EOF -- bump "hi"
+				hi_ = maxHi_
+			} else {
+				// slow path -- write current buffer; read next one
+				seek(filePointer)
+				if (filePointer == hi_) {
+					// appending to EOF -- bump "hi"
+					hi_ = maxHi_
+				}
+			}
+		}
+		len = Math.min(len, (hi_ - filePointer).toInt())
+		val buffOff = (filePointer - lo_).toInt()
+		System.arraycopy(b, off, buff_, buffOff, len)
+		filePointer += len.toLong()
+		return len
+	}
+
+	companion object {
+		const val LogBuffSz_ = 16 // 64K buffer
+		const val BuffSz_ = 1 shl LogBuffSz_
+		const val BuffMask_ = (BuffSz_.toLong() - 1L).inv()
+	}
 }

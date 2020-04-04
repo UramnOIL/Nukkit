@@ -1,161 +1,121 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import cn.nukkit.api.API;
-import cn.nukkit.block.Block;
-import cn.nukkit.math.BlockFace;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import static cn.nukkit.math.BlockFace.*;
-import static cn.nukkit.utils.Rail.Orientation.State.*;
+import cn.nukkit.block.Block
+import cn.nukkit.math.BlockFace
+import java.util.*
+import java.util.function.Predicate
+import java.util.stream.Stream
 
 /**
  * INTERNAL helper class of railway
- * <p>
+ *
+ *
  * By lmlstarqaq http://snake1999.com/
  * Creation time: 2017/7/1 17:42.
  */
-@API(usage = API.Usage.BLEEDING, definition = API.Definition.INTERNAL)
-public final class Rail {
+object Rail {
+	fun isRailBlock(block: Block): Boolean {
+		Objects.requireNonNull(block, "Rail block predicate can not accept null block")
+		return isRailBlock(block.id)
+	}
 
-    public static boolean isRailBlock(Block block) {
-        Objects.requireNonNull(block, "Rail block predicate can not accept null block");
-        return isRailBlock(block.getId());
-    }
+	fun isRailBlock(blockId: Int): Boolean {
+		return when (blockId) {
+			Block.RAIL, Block.POWERED_RAIL, Block.ACTIVATOR_RAIL, Block.DETECTOR_RAIL -> true
+			else -> false
+		}
+	}
 
-    public enum Orientation {
-        STRAIGHT_NORTH_SOUTH(0, STRAIGHT, NORTH, SOUTH, null),
-        STRAIGHT_EAST_WEST(1, STRAIGHT, EAST, WEST, null),
-        ASCENDING_EAST(2, ASCENDING, EAST, WEST, EAST),
-        ASCENDING_WEST(3, ASCENDING, EAST, WEST, WEST),
-        ASCENDING_NORTH(4, ASCENDING, NORTH, SOUTH, NORTH),
-        ASCENDING_SOUTH(5, ASCENDING, NORTH, SOUTH, SOUTH),
-        CURVED_SOUTH_EAST(6, CURVED, SOUTH, EAST, null),
-        CURVED_SOUTH_WEST(7, CURVED, SOUTH, WEST, null),
-        CURVED_NORTH_WEST(8, CURVED, NORTH, WEST, null),
-        CURVED_NORTH_EAST(9, CURVED, NORTH, EAST, null);
+	enum class Orientation(private val meta: Int, private val state: State, from: BlockFace, to: BlockFace, ascendingDirection: BlockFace?) {
+		STRAIGHT_NORTH_SOUTH(0, State.STRAIGHT, BlockFace.NORTH, BlockFace.SOUTH, null), STRAIGHT_EAST_WEST(1, State.STRAIGHT, BlockFace.EAST, BlockFace.WEST, null), ASCENDING_EAST(2, State.ASCENDING, BlockFace.EAST, BlockFace.WEST, BlockFace.EAST), ASCENDING_WEST(3, State.ASCENDING, BlockFace.EAST, BlockFace.WEST, BlockFace.WEST), ASCENDING_NORTH(4, State.ASCENDING, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.NORTH), ASCENDING_SOUTH(5, State.ASCENDING, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.SOUTH), CURVED_SOUTH_EAST(6, State.CURVED, BlockFace.SOUTH, BlockFace.EAST, null), CURVED_SOUTH_WEST(7, State.CURVED, BlockFace.SOUTH, BlockFace.WEST, null), CURVED_NORTH_WEST(8, State.CURVED, BlockFace.NORTH, BlockFace.WEST, null), CURVED_NORTH_EAST(9, State.CURVED, BlockFace.NORTH, BlockFace.EAST, null);
 
-        private static final Orientation[] META_LOOKUP = new Orientation[values().length];
-        private final int meta;
-        private final State state;
-        private final List<BlockFace> connectingDirections;
-        private final BlockFace ascendingDirection;
+		private val connectingDirections: List<BlockFace>
+		private val ascendingDirection: BlockFace?
+		fun metadata(): Int {
+			return meta
+		}
 
-        Orientation(int meta, State state, BlockFace from, BlockFace to, BlockFace ascendingDirection) {
-            this.meta = meta;
-            this.state = state;
-            this.connectingDirections = Arrays.asList(from, to);
-            this.ascendingDirection = ascendingDirection;
-        }
+		fun hasConnectingDirections(vararg faces: BlockFace?): Boolean {
+			return Stream.of(*faces).allMatch(Predicate { o: BlockFace -> connectingDirections.contains(o) })
+		}
 
-        public static Orientation byMetadata(int meta) {
-            if (meta < 0 || meta >= META_LOOKUP.length) {
-                meta = 0;
-            }
+		fun connectingDirections(): List<BlockFace> {
+			return connectingDirections
+		}
 
-            return META_LOOKUP[meta];
-        }
+		fun ascendingDirection(): Optional<BlockFace> {
+			return Optional.ofNullable(ascendingDirection)
+		}
 
-        public static Orientation straight(BlockFace face) {
-            switch (face) {
-                case NORTH:
-                case SOUTH:
-                    return STRAIGHT_NORTH_SOUTH;
-                case EAST:
-                case WEST:
-                    return STRAIGHT_EAST_WEST;
-            }
-            return STRAIGHT_NORTH_SOUTH;
-        }
+		enum class State {
+			STRAIGHT, ASCENDING, CURVED
+		}
 
-        public static Orientation ascending(BlockFace face) {
-            switch (face) {
-                case NORTH:
-                    return ASCENDING_NORTH;
-                case SOUTH:
-                    return ASCENDING_SOUTH;
-                case EAST:
-                    return ASCENDING_EAST;
-                case WEST:
-                    return ASCENDING_WEST;
-            }
-            return ASCENDING_EAST;
-        }
+		val isStraight: Boolean
+			get() = state == State.STRAIGHT
 
-        public static Orientation curved(BlockFace f1, BlockFace f2) {
-            for (Orientation o : new Orientation[]{CURVED_SOUTH_EAST, CURVED_SOUTH_WEST, CURVED_NORTH_WEST, CURVED_NORTH_EAST}) {
-                if (o.connectingDirections.contains(f1) && o.connectingDirections.contains(f2)) {
-                    return o;
-                }
-            }
-            return CURVED_SOUTH_EAST;
-        }
+		val isAscending: Boolean
+			get() = state == State.ASCENDING
 
-        public static Orientation straightOrCurved(BlockFace f1, BlockFace f2) {
-            for (Orientation o : new Orientation[]{STRAIGHT_NORTH_SOUTH, STRAIGHT_EAST_WEST, CURVED_SOUTH_EAST, CURVED_SOUTH_WEST, CURVED_NORTH_WEST, CURVED_NORTH_EAST}) {
-                if (o.connectingDirections.contains(f1) && o.connectingDirections.contains(f2)) {
-                    return o;
-                }
-            }
-            return STRAIGHT_NORTH_SOUTH;
-        }
+		val isCurved: Boolean
+			get() = state == State.CURVED
 
-        public int metadata() {
-            return meta;
-        }
+		companion object {
+			private val META_LOOKUP = arrayOfNulls<Orientation>(values().size)
+			fun byMetadata(meta: Int): Orientation? {
+				var meta = meta
+				if (meta < 0 || meta >= META_LOOKUP.size) {
+					meta = 0
+				}
+				return META_LOOKUP[meta]
+			}
 
-        public boolean hasConnectingDirections(BlockFace... faces) {
-            return Stream.of(faces).allMatch(connectingDirections::contains);
-        }
+			fun straight(face: BlockFace?): Orientation {
+				when (face) {
+					BlockFace.NORTH, BlockFace.SOUTH -> return STRAIGHT_NORTH_SOUTH
+					BlockFace.EAST, BlockFace.WEST -> return STRAIGHT_EAST_WEST
+				}
+				return STRAIGHT_NORTH_SOUTH
+			}
 
-        public List<BlockFace> connectingDirections() {
-            return connectingDirections;
-        }
+			fun ascending(face: BlockFace?): Orientation {
+				when (face) {
+					BlockFace.NORTH -> return ASCENDING_NORTH
+					BlockFace.SOUTH -> return ASCENDING_SOUTH
+					BlockFace.EAST -> return ASCENDING_EAST
+					BlockFace.WEST -> return ASCENDING_WEST
+				}
+				return ASCENDING_EAST
+			}
 
-        public Optional<BlockFace> ascendingDirection() {
-            return Optional.ofNullable(ascendingDirection);
-        }
+			fun curved(f1: BlockFace, f2: BlockFace): Orientation {
+				for (o in arrayOf(CURVED_SOUTH_EAST, CURVED_SOUTH_WEST, CURVED_NORTH_WEST, CURVED_NORTH_EAST)) {
+					if (o.connectingDirections.contains(f1) && o.connectingDirections.contains(f2)) {
+						return o
+					}
+				}
+				return CURVED_SOUTH_EAST
+			}
 
-        public enum State {
-            STRAIGHT, ASCENDING, CURVED
-        }
+			fun straightOrCurved(f1: BlockFace, f2: BlockFace): Orientation {
+				for (o in arrayOf(STRAIGHT_NORTH_SOUTH, STRAIGHT_EAST_WEST, CURVED_SOUTH_EAST, CURVED_SOUTH_WEST, CURVED_NORTH_WEST, CURVED_NORTH_EAST)) {
+					if (o.connectingDirections.contains(f1) && o.connectingDirections.contains(f2)) {
+						return o
+					}
+				}
+				return STRAIGHT_NORTH_SOUTH
+			}
 
-        public boolean isStraight() {
-            return state == STRAIGHT;
-        }
+			init {
+				for (o in values()) {
+					META_LOOKUP[cn.nukkit.utils.o.meta] = cn.nukkit.utils.o
+				}
+			}
+		}
 
-        public boolean isAscending() {
-            return state == ASCENDING;
-        }
-
-        public boolean isCurved() {
-            return state == CURVED;
-        }
-
-        static {
-            for (Orientation o : values()) {
-                META_LOOKUP[o.meta] = o;
-            }
-        }
-    }
-
-    public static boolean isRailBlock(int blockId) {
-        switch (blockId) {
-            case Block.RAIL:
-            case Block.POWERED_RAIL:
-            case Block.ACTIVATOR_RAIL:
-            case Block.DETECTOR_RAIL:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private Rail() {
-        //no instance
-    }
+		init {
+			connectingDirections = Arrays.asList(from, to)
+			this.ascendingDirection = ascendingDirection
+		}
+	}
 }

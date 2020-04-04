@@ -95,14 +95,14 @@ public class TimingsHistory {
         final Map<Integer, AtomicInteger> blockEntityCounts = new HashMap<>();
         final Gson GSON = new Gson();
         // Information about all loaded entities/block entities
-        for (Level level : Server.getInstance().getLevels().values()) {
+        for (Level level : Server.instance.getLevels().values()) {
             JsonArray jsonLevel = new JsonArray();
             for (FullChunk chunk : level.getChunks().values()) {
                 entityCounts.clear();
                 blockEntityCounts.clear();
 
                 //count entities
-                for (Entity entity : chunk.getEntities().values()) {
+                for (Entity entity : chunk.entities.values()) {
                     if (!entityCounts.containsKey(entity.getNetworkId()))
                         entityCounts.put(entity.getNetworkId(), new AtomicInteger(0));
                     entityCounts.get(entity.getNetworkId()).incrementAndGet();
@@ -110,7 +110,7 @@ public class TimingsHistory {
                 }
 
                 //count block entities
-                for (BlockEntity blockEntity : chunk.getBlockEntities().values()) {
+                for (BlockEntity blockEntity : chunk.blockEntities.values()) {
                     if (!blockEntityCounts.containsKey(blockEntity.getBlock().getId()))
                         blockEntityCounts.put(blockEntity.getBlock().getId(), new AtomicInteger(0));
                     blockEntityCounts.get(blockEntity.getBlock().getId()).incrementAndGet();
@@ -122,8 +122,8 @@ public class TimingsHistory {
                 }
 
                 JsonArray jsonChunk = new JsonArray();
-                jsonChunk.add(chunk.getX());
-                jsonChunk.add(chunk.getZ());
+                jsonChunk.add(chunk.x);
+                jsonChunk.add(chunk.z);
                 jsonChunk.add(GSON.toJsonTree(JsonUtil.mapToObject(entityCounts.entrySet(), (entry) -> new JsonUtil.JSONPair(entry.getKey(), entry.getValue().get()))).getAsJsonObject());
                 jsonChunk.add(GSON.toJsonTree(JsonUtil.mapToObject(blockEntityCounts.entrySet(), (entry) -> new JsonUtil.JSONPair(entry.getKey(), entry.getValue().get()))).getAsJsonObject());
                 jsonLevel.add(jsonChunk);
@@ -209,7 +209,7 @@ public class TimingsHistory {
         final double avg;
 
         PingRecord() {
-            final Collection<Player> onlinePlayers = Server.getInstance().getOnlinePlayers().values();
+            final Collection<Player> onlinePlayers = Server.instance.getOnlinePlayers().values();
             int totalPing = 0;
             for (Player player : onlinePlayers) {
                 totalPing += player.getPing();

@@ -1,29 +1,32 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.BlockVector3;
-import lombok.ToString;
+import cn.nukkit.math.BlockVector3
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class NetworkChunkPublisherUpdatePacket extends DataPacket {
+class NetworkChunkPublisherUpdatePacket : DataPacket() {
+	var position: BlockVector3? = null
+	var radius = 0
 
-    public BlockVector3 position;
-    public int radius;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.NETWORK_CHUNK_PUBLISHER_UPDATE_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.NETWORK_CHUNK_PUBLISHER_UPDATE_PACKET;
-    }
+	@Override
+	override fun decode() {
+		position = this.getSignedBlockPosition()
+		radius = this.getUnsignedVarInt() as Int
+	}
 
-    @Override
-    public void decode() {
-        this.position = this.getSignedBlockPosition();
-        this.radius = (int) this.getUnsignedVarInt();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putSignedBlockPosition(position);
-        this.putUnsignedVarInt(radius);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putSignedBlockPosition(position)
+		this.putUnsignedVarInt(radius)
+	}
 }

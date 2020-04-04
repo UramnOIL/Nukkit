@@ -1,65 +1,55 @@
-package cn.nukkit.raknet.protocol;
+package cn.nukkit.raknet.protocol
 
-import cn.nukkit.utils.Binary;
-
-import java.util.concurrent.ConcurrentLinkedQueue;
+import cn.nukkit.utils.Binary
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public abstract class DataPacket extends Packet {
+abstract class DataPacket : Packet() {
+	var packets = ConcurrentLinkedQueue<Any?>()
+	var seqNumber: Int? = null
+	override fun encode() {
+		super.encode()
+		putLTriad(seqNumber!!)
+		for (packet in packets) {
+			put((if (packet is EncapsulatedPacket) packet.toBinary() else packet as ByteArray?)!!)
+		}
+	}
 
-    public ConcurrentLinkedQueue<Object> packets = new ConcurrentLinkedQueue<>();
+	fun length(): Int {
+		var length = 4
+		for (packet in packets) {
+			length += if (packet is EncapsulatedPacket) packet.totalLength else (packet as ByteArray?)!!.size
+		}
+		return length
+	}
 
-    public Integer seqNumber;
+	override fun decode() {
+		super.decode()
+		seqNumber = this.lTriad
+		while (!feof()) {
+			val data = Binary.subBytes(buffer, offset)
+			val packet: EncapsulatedPacket = EncapsulatedPacket.Companion.fromBinary(data, false)
+			offset += packet.offset
+			if (packet.buffer.size == 0) {
+				break
+			}
+			packets.add(packet)
+		}
+	}
 
-    @Override
-    public void encode() {
-        super.encode();
-        this.putLTriad(this.seqNumber);
-        for (Object packet : this.packets) {
-            this.put(packet instanceof EncapsulatedPacket ? ((EncapsulatedPacket) packet).toBinary() : (byte[]) packet);
-        }
-    }
+	override fun clean(): Packet? {
+		packets = ConcurrentLinkedQueue()
+		seqNumber = null
+		return super.clean()
+	}
 
-    public int length() {
-        int length = 4;
-        for (Object packet : this.packets) {
-            length += packet instanceof EncapsulatedPacket ? ((EncapsulatedPacket) packet).getTotalLength() : ((byte[]) packet).length;
-        }
-
-        return length;
-    }
-
-    @Override
-    public void decode() {
-        super.decode();
-        this.seqNumber = this.getLTriad();
-
-        while (!this.feof()) {
-            byte[] data = Binary.subBytes(this.buffer, this.offset);
-            EncapsulatedPacket packet = EncapsulatedPacket.fromBinary(data, false);
-            this.offset += packet.getOffset();
-            if (packet.buffer.length == 0) {
-                break;
-            }
-            this.packets.add(packet);
-        }
-    }
-
-    @Override
-    public Packet clean() {
-        this.packets = new ConcurrentLinkedQueue<>();
-        this.seqNumber = null;
-        return super.clean();
-    }
-
-    @Override
-    public DataPacket clone() throws CloneNotSupportedException {
-        DataPacket packet = (DataPacket) super.clone();
-        packet.packets = new ConcurrentLinkedQueue<>(this.packets);
-        return packet;
-    }
-
+	@Throws(CloneNotSupportedException::class)
+	override fun clone(): DataPacket {
+		val packet = super.clone() as DataPacket
+		packet.packets = ConcurrentLinkedQueue(packets)
+		return packet
+	}
 }

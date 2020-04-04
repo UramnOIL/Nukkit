@@ -1,34 +1,39 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.nbt.NBTIO;
-import cn.nukkit.nbt.tag.CompoundTag;
+import cn.nukkit.nbt.NBTIO
+import cn.nukkit.nbt.tag.CompoundTag
+import java.io.IOException
+import java.nio.ByteOrder
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
-import java.io.IOException;
-import java.nio.ByteOrder;
+class LevelEventGenericPacket : DataPacket() {
+	var eventId = 0
+	var tag: CompoundTag? = null
 
-public class LevelEventGenericPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.LEVEL_EVENT_GENERIC_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public int eventId;
-    public CompoundTag tag;
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarInt(eventId)
+		try {
+			this.put(NBTIO.write(tag, ByteOrder.LITTLE_ENDIAN, true))
+		} catch (e: IOException) {
+			throw RuntimeException(e)
+		}
+	}
 
-    @Override
-    public void decode() {
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarInt(eventId);
-        try {
-            this.put(NBTIO.write(tag, ByteOrder.LITTLE_ENDIAN, true));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.LEVEL_EVENT_GENERIC_PACKET
+	}
 }

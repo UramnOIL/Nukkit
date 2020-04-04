@@ -1,47 +1,50 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.Vector3f;
-import lombok.ToString;
+import cn.nukkit.math.Vector3f
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author Nukkit Project Team
  */
 @ToString
-public class RespawnPacket extends DataPacket {
+class RespawnPacket : DataPacket() {
+	var x = 0f
+	var y = 0f
+	var z = 0f
+	var respawnState = STATE_SEARCHING_FOR_SPAWN
+	var runtimeEntityId: Long = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.RESPAWN_PACKET;
+	@Override
+	override fun decode() {
+		val v: Vector3f = this.getVector3f()
+		x = v.x
+		y = v.y
+		z = v.z
+		respawnState = this.getByte()
+		runtimeEntityId = this.getEntityRuntimeId()
+	}
 
-    public static final int STATE_SEARCHING_FOR_SPAWN = 0;
-    public static final int STATE_READY_TO_SPAWN = 1;
-    public static final int STATE_CLIENT_READY_TO_SPAWN = 2;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVector3f(x, y, z)
+		this.putByte(respawnState.toByte())
+		this.putEntityRuntimeId(runtimeEntityId)
+	}
 
-    public float x;
-    public float y;
-    public float z;
-    public int respawnState = STATE_SEARCHING_FOR_SPAWN;
-    public long runtimeEntityId;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void decode() {
-        Vector3f v = this.getVector3f();
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        this.respawnState = this.getByte();
-        this.runtimeEntityId = this.getEntityRuntimeId();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVector3f(this.x, this.y, this.z);
-        this.putByte((byte) respawnState);
-        this.putEntityRuntimeId(runtimeEntityId);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.RESPAWN_PACKET
+		const val STATE_SEARCHING_FOR_SPAWN = 0
+		const val STATE_READY_TO_SPAWN = 1
+		const val STATE_CLIENT_READY_TO_SPAWN = 2
+	}
 }

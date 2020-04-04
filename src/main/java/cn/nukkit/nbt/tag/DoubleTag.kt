@@ -1,69 +1,65 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import kotlin.jvm.Throws
 
-import java.io.IOException;
+class DoubleTag : NumberTag<Double?> {
+	override var data = 0.0
 
-public class DoubleTag extends NumberTag<Double> {
-    public double data;
+	@Override
+	fun getData(): Double {
+		return data
+	}
 
-    @Override
-    public Double getData() {
-        return data;
-    }
+	@Override
+	fun setData(data: Double?) {
+		this.data = data ?: 0
+	}
 
-    @Override
-    public void setData(Double data) {
-        this.data = data == null ? 0 : data;
-    }
+	constructor(name: String?) : super(name) {}
+	constructor(name: String?, data: Double) : super(name) {
+		this.data = data
+	}
 
-    public DoubleTag(String name) {
-        super(name);
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		dos.writeDouble(data)
+	}
 
-    public DoubleTag(String name, double data) {
-        super(name);
-        this.data = data;
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		data = dis.readDouble()
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        dos.writeDouble(data);
-    }
+	@Override
+	override fun parseValue(): Double {
+		return data
+	}
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-        data = dis.readDouble();
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_Double
 
-    @Override
-    public Double parseValue() {
-        return this.data;
-    }
+	@Override
+	override fun toString(): String {
+		return "DoubleTag " + this.getName().toString() + " (data: " + data.toString() + ")"
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_Double;
-    }
+	@Override
+	override fun copy(): Tag {
+		return DoubleTag(getName(), data)
+	}
 
-    @Override
-    public String toString() {
-        return "DoubleTag " + this.getName() + " (data: " + data + ")";
-    }
-
-    @Override
-    public Tag copy() {
-        return new DoubleTag(getName(), data);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            DoubleTag o = (DoubleTag) obj;
-            return data == o.data;
-        }
-        return false;
-    }
-
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val o = obj as DoubleTag
+			return data == o.data
+		}
+		return false
+	}
 }

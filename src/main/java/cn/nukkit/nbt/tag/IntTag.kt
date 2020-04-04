@@ -1,69 +1,65 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import kotlin.jvm.Throws
 
-import java.io.IOException;
+class IntTag : NumberTag<Integer?> {
+	override var data = 0
 
-public class IntTag extends NumberTag<Integer> {
-    public int data;
+	@Override
+	fun getData(): Integer {
+		return data
+	}
 
-    @Override
-    public Integer getData() {
-        return data;
-    }
+	@Override
+	fun setData(data: Integer?) {
+		this.data = if (data == null) 0 else data
+	}
 
-    @Override
-    public void setData(Integer data) {
-        this.data = data == null ? 0 : data;
-    }
+	constructor(name: String?) : super(name) {}
+	constructor(name: String?, data: Int) : super(name) {
+		this.data = data
+	}
 
-    public IntTag(String name) {
-        super(name);
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		dos.writeInt(data)
+	}
 
-    public IntTag(String name, int data) {
-        super(name);
-        this.data = data;
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		data = dis.readInt()
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        dos.writeInt(data);
-    }
+	@Override
+	override fun parseValue(): Integer {
+		return data
+	}
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-        data = dis.readInt();
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_Int
 
-    @Override
-    public Integer parseValue() {
-        return this.data;
-    }
+	@Override
+	override fun toString(): String {
+		return "IntTag " + this.getName().toString() + "(data: " + data.toString() + ")"
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_Int;
-    }
+	@Override
+	override fun copy(): Tag {
+		return IntTag(getName(), data)
+	}
 
-    @Override
-    public String toString() {
-        return "IntTag " + this.getName() + "(data: " + data + ")";
-    }
-
-    @Override
-    public Tag copy() {
-        return new IntTag(getName(), data);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            IntTag o = (IntTag) obj;
-            return data == o.data;
-        }
-        return false;
-    }
-
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val o = obj as IntTag
+			return data == o.data
+		}
+		return false
+	}
 }

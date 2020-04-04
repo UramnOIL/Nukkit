@@ -1,29 +1,33 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class StopSoundPacket extends DataPacket {
+class StopSoundPacket : DataPacket() {
+	var name: String? = null
+	var stopAll = false
 
-    public static final byte NETWORK_ID = ProtocolInfo.STOP_SOUND_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public String name;
-    public boolean stopAll;
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putString(name)
+		this.putBoolean(stopAll)
+	}
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putString(this.name);
-        this.putBoolean(this.stopAll);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.STOP_SOUND_PACKET
+	}
 }

@@ -1,53 +1,43 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.RakNet;
-import cn.nukkit.raknet.protocol.Packet;
-
-import java.net.InetSocketAddress;
+import cn.nukkit.raknet.RakNet
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class OPEN_CONNECTION_REQUEST_2 extends Packet {
-    public static final byte ID = (byte) 0x07;
+class OPEN_CONNECTION_REQUEST_2 : Packet() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	var clientID: Long = 0
+	var serverAddress: String? = null
+	var serverPort = 0
+	var mtuSize: Short = 0
+	override fun encode() {
+		super.encode()
+		put(RakNet.MAGIC)
+		this.putAddress(serverAddress!!, serverPort)
+		putShort(mtuSize.toInt())
+		putLong(clientID)
+	}
 
-    public long clientID;
-    public String serverAddress;
-    public int serverPort;
-    public short mtuSize;
+	override fun decode() {
+		super.decode()
+		offset += 16 //skip magic bytes
+		val address = this.address
+		serverAddress = address!!.hostString
+		serverPort = address.port
+		mtuSize = this.signedShort
+		clientID = this.long
+	}
 
-    @Override
-    public void encode() {
-        super.encode();
-        this.put(RakNet.MAGIC);
-        this.putAddress(this.serverAddress, this.serverPort);
-        this.putShort(this.mtuSize);
-        this.putLong(this.clientID);
-    }
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return OPEN_CONNECTION_REQUEST_2()
+		}
+	}
 
-    @Override
-    public void decode() {
-        super.decode();
-        this.offset += 16; //skip magic bytes
-        InetSocketAddress address = this.getAddress();
-        this.serverAddress = address.getHostString();
-        this.serverPort = address.getPort();
-        this.mtuSize = this.getSignedShort();
-        this.clientID = this.getLong();
-    }
-
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new OPEN_CONNECTION_REQUEST_2();
-        }
-
-    }
+	companion object {
+		const val iD = 0x07.toByte()
+	}
 }

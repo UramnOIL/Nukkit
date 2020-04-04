@@ -1,40 +1,45 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Created on 15-10-22.
  */
 @ToString
-public class SetEntityLinkPacket extends DataPacket {
+class SetEntityLinkPacket : DataPacket() {
+	var vehicleUniqueId //from
+			: Long = 0
+	var riderUniqueId //to
+			: Long = 0
+	var type: Byte = 0
+	var immediate: Byte = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.SET_ENTITY_LINK_PACKET;
+	@Override
+	override fun decode() {
+	}
 
-    public static final byte TYPE_REMOVE = 0;
-    public static final byte TYPE_RIDE = 1;
-    public static final byte TYPE_PASSENGER = 2;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityUniqueId(vehicleUniqueId)
+		this.putEntityUniqueId(riderUniqueId)
+		this.putByte(type)
+		this.putByte(immediate)
+	}
 
-    public long vehicleUniqueId; //from
-    public long riderUniqueId; //to
-    public byte type;
-    public byte immediate;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityUniqueId(this.vehicleUniqueId);
-        this.putEntityUniqueId(this.riderUniqueId);
-        this.putByte(this.type);
-        this.putByte(this.immediate);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SET_ENTITY_LINK_PACKET
+		const val TYPE_REMOVE: Byte = 0
+		const val TYPE_RIDE: Byte = 1
+		const val TYPE_PASSENGER: Byte = 2
+	}
 }

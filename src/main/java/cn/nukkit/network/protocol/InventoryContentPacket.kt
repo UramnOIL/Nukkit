@@ -1,62 +1,68 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.item.Item;
-import lombok.ToString;
+import cn.nukkit.item.Item
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class InventoryContentPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.INVENTORY_CONTENT_PACKET;
+class InventoryContentPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var inventoryId = 0
+	var slots: Array<Item?>? = arrayOfNulls<Item?>(0)
 
-    public static final int SPECIAL_INVENTORY = 0;
-    public static final int SPECIAL_OFFHAND = 0x77;
-    public static final int SPECIAL_ARMOR = 0x78;
-    public static final int SPECIAL_CREATIVE = 0x79;
-    public static final int SPECIAL_HOTBAR = 0x7a;
-    public static final int SPECIAL_FIXED_INVENTORY = 0x7b;
+	@Override
+	override fun clean(): DataPacket? {
+		slots = arrayOfNulls<Item?>(0)
+		return super.clean()
+	}
 
-    public int inventoryId;
-    public Item[] slots = new Item[0];
+	@Override
+	override fun decode() {
+		inventoryId = this.getUnsignedVarInt() as Int
+		val count = this.getUnsignedVarInt() as Int
+		slots = arrayOfNulls<Item?>(count)
+		var s = 0
+		while (s < count && !this.feof()) {
+			slots!![s] = this.getSlot()
+			++s
+		}
+	}
 
-    @Override
-    public DataPacket clean() {
-        this.slots = new Item[0];
-        return super.clean();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putUnsignedVarInt(inventoryId)
+		this.putUnsignedVarInt(slots!!.size)
+		for (slot in slots!!) {
+			this.putSlot(slot)
+		}
+	}
 
-    @Override
-    public void decode() {
-        this.inventoryId = (int) this.getUnsignedVarInt();
-        int count = (int) this.getUnsignedVarInt();
-        this.slots = new Item[count];
+	@Override
+	override fun clone(): InventoryContentPacket? {
+		val pk = super.clone() as InventoryContentPacket?
+		pk!!.slots = slots.clone()
+		return pk
+	}
 
-        for (int s = 0; s < count && !this.feof(); ++s) {
-            this.slots[s] = this.getSlot();
-        }
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putUnsignedVarInt(this.inventoryId);
-        this.putUnsignedVarInt(this.slots.length);
-        for (Item slot : this.slots) {
-            this.putSlot(slot);
-        }
-    }
-
-    @Override
-    public InventoryContentPacket clone() {
-        InventoryContentPacket pk = (InventoryContentPacket) super.clone();
-        pk.slots = this.slots.clone();
-        return pk;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.INVENTORY_CONTENT_PACKET
+		const val SPECIAL_INVENTORY = 0
+		const val SPECIAL_OFFHAND = 0x77
+		const val SPECIAL_ARMOR = 0x78
+		const val SPECIAL_CREATIVE = 0x79
+		const val SPECIAL_HOTBAR = 0x7a
+		const val SPECIAL_FIXED_INVENTORY = 0x7b
+	}
 }

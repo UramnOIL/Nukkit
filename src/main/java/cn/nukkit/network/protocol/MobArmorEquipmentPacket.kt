@@ -1,41 +1,47 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.item.Item;
-import lombok.ToString;
+import cn.nukkit.item.Item
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class MobArmorEquipmentPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.MOB_ARMOR_EQUIPMENT_PACKET;
+class MobArmorEquipmentPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var eid: Long = 0
+	var slots: Array<Item?>? = arrayOfNulls<Item?>(4)
 
-    public long eid;
-    public Item[] slots = new Item[4];
+	@Override
+	override fun decode() {
+		eid = this.getEntityRuntimeId()
+		slots = arrayOfNulls<Item?>(4)
+		slots!![0] = this.getSlot()
+		slots!![1] = this.getSlot()
+		slots!![2] = this.getSlot()
+		slots!![3] = this.getSlot()
+	}
 
-    @Override
-    public void decode() {
-        this.eid = this.getEntityRuntimeId();
-        this.slots = new Item[4];
-        this.slots[0] = this.getSlot();
-        this.slots[1] = this.getSlot();
-        this.slots[2] = this.getSlot();
-        this.slots[3] = this.getSlot();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityRuntimeId(eid)
+		this.putSlot(slots!![0])
+		this.putSlot(slots!![1])
+		this.putSlot(slots!![2])
+		this.putSlot(slots!![3])
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityRuntimeId(this.eid);
-        this.putSlot(this.slots[0]);
-        this.putSlot(this.slots[1]);
-        this.putSlot(this.slots[2]);
-        this.putSlot(this.slots[3]);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.MOB_ARMOR_EQUIPMENT_PACKET
+	}
 }

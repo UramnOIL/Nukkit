@@ -1,36 +1,40 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Created by on 15-10-12.
  */
 @ToString
-public class DisconnectPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.DISCONNECT_PACKET;
+class DisconnectPacket : DataPacket() {
+	var hideDisconnectionScreen = false
+	var message: String? = null
 
-    public boolean hideDisconnectionScreen = false;
-    public String message;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun decode() {
+		hideDisconnectionScreen = this.getBoolean()
+		message = this.getString()
+	}
 
-    @Override
-    public void decode() {
-        this.hideDisconnectionScreen = this.getBoolean();
-        this.message = this.getString();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putBoolean(hideDisconnectionScreen)
+		if (!hideDisconnectionScreen) {
+			this.putString(message)
+		}
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putBoolean(this.hideDisconnectionScreen);
-        if (!this.hideDisconnectionScreen) {
-            this.putString(this.message);
-        }
-    }
-
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.DISCONNECT_PACKET
+	}
 }

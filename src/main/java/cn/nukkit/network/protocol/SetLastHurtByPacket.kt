@@ -1,22 +1,24 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class SetLastHurtByPacket extends DataPacket {
+class SetLastHurtByPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.SET_LAST_HURT_BY_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.SET_LAST_HURT_BY_PACKET;
-    }
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        //TODO
-    }
+	@Override
+	override fun encode() {
+		//TODO
+	}
 }

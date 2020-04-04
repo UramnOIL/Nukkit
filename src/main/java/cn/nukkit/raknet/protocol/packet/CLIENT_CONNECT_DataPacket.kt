@@ -1,45 +1,37 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.protocol.Packet;
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class CLIENT_CONNECT_DataPacket extends Packet {
-    public static final byte ID = (byte) 0x09;
+class CLIENT_CONNECT_DataPacket : Packet() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	var clientID: Long = 0
+	var sendPing: Long = 0
+	var useSecurity = false
+	override fun encode() {
+		super.encode()
+		putLong(clientID)
+		putLong(sendPing)
+		putByte((if (useSecurity) 1 else 0).toByte())
+	}
 
-    public long clientID;
-    public long sendPing;
-    public boolean useSecurity = false;
+	override fun decode() {
+		super.decode()
+		clientID = this.long
+		sendPing = this.long
+		useSecurity = this.byte > 0
+	}
 
-    @Override
-    public void encode() {
-        super.encode();
-        this.putLong(this.clientID);
-        this.putLong(this.sendPing);
-        this.putByte((byte) (this.useSecurity ? 1 : 0));
-    }
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return CLIENT_CONNECT_DataPacket()
+		}
+	}
 
-    @Override
-    public void decode() {
-        super.decode();
-        this.clientID = this.getLong();
-        this.sendPing = this.getLong();
-        this.useSecurity = this.getByte() > 0;
-    }
-
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new CLIENT_CONNECT_DataPacket();
-        }
-
-    }
+	companion object {
+		const val iD = 0x09.toByte()
+	}
 }

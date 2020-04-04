@@ -1,164 +1,171 @@
-package cn.nukkit.nbt.stream;
+package cn.nukkit.nbt.stream
 
-import cn.nukkit.utils.VarInt;
-
-import java.io.DataInput;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
+import cn.nukkit.utils.VarInt
+import java.io.DataInput
+import java.io.DataInputStream
+import java.io.IOException
+import java.io.InputStream
+import java.nio.ByteOrder
+import java.nio.charset.StandardCharsets
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class NBTInputStream implements DataInput, AutoCloseable {
-    private final DataInputStream stream;
-    private final ByteOrder endianness;
-    private final boolean network;
+class NBTInputStream(stream: InputStream, endianness: ByteOrder, network: Boolean) : DataInput, AutoCloseable {
+	private val stream: DataInputStream
+	private val endianness: ByteOrder
+	val isNetwork: Boolean
 
-    public NBTInputStream(InputStream stream) {
-        this(stream, ByteOrder.BIG_ENDIAN);
-    }
+	constructor(stream: InputStream) : this(stream, ByteOrder.BIG_ENDIAN) {}
+	constructor(stream: InputStream, endianness: ByteOrder) : this(stream, endianness, false) {}
 
-    public NBTInputStream(InputStream stream, ByteOrder endianness) {
-        this(stream, endianness, false);
-    }
+	fun getEndianness(): ByteOrder {
+		return endianness
+	}
 
-    public NBTInputStream(InputStream stream, ByteOrder endianness, boolean network) {
-        this.stream = stream instanceof DataInputStream ? (DataInputStream) stream : new DataInputStream(stream);
-        this.endianness = endianness;
-        this.network = network;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readFully(b: ByteArray?) {
+		stream.readFully(b)
+	}
 
-    public ByteOrder getEndianness() {
-        return endianness;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readFully(b: ByteArray?, off: Int, len: Int) {
+		stream.readFully(b, off, len)
+	}
 
-    public boolean isNetwork() {
-        return network;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun skipBytes(n: Int): Int {
+		return stream.skipBytes(n)
+	}
 
-    @Override
-    public void readFully(byte[] b) throws IOException {
-        this.stream.readFully(b);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readBoolean(): Boolean {
+		return stream.readBoolean()
+	}
 
-    @Override
-    public void readFully(byte[] b, int off, int len) throws IOException {
-        this.stream.readFully(b, off, len);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readByte(): Byte {
+		return stream.readByte()
+	}
 
-    @Override
-    public int skipBytes(int n) throws IOException {
-        return this.stream.skipBytes(n);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readUnsignedByte(): Int {
+		return stream.readUnsignedByte()
+	}
 
-    @Override
-    public boolean readBoolean() throws IOException {
-        return this.stream.readBoolean();
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readShort(): Short {
+		var s: Short = stream.readShort()
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			s = Short.reverseBytes(s)
+		}
+		return s
+	}
 
-    @Override
-    public byte readByte() throws IOException {
-        return this.stream.readByte();
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readUnsignedShort(): Int {
+		var s: Int = stream.readUnsignedShort()
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			s = Integer.reverseBytes(s) shr 16
+		}
+		return s
+	}
 
-    @Override
-    public int readUnsignedByte() throws IOException {
-        return this.stream.readUnsignedByte();
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readChar(): Char {
+		var c: Char = stream.readChar()
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			c = Character.reverseBytes(c)
+		}
+		return c
+	}
 
-    @Override
-    public short readShort() throws IOException {
-        short s = this.stream.readShort();
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            s = Short.reverseBytes(s);
-        }
-        return s;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readInt(): Int {
+		if (isNetwork) {
+			return VarInt.readVarInt(stream)
+		}
+		var i: Int = stream.readInt()
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			i = Integer.reverseBytes(i)
+		}
+		return i
+	}
 
-    @Override
-    public int readUnsignedShort() throws IOException {
-        int s = this.stream.readUnsignedShort();
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            s = Integer.reverseBytes(s) >> 16;
-        }
-        return s;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readLong(): Long {
+		if (isNetwork) {
+			return VarInt.readVarLong(stream)
+		}
+		var l: Long = stream.readLong()
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			l = Long.reverseBytes(l)
+		}
+		return l
+	}
 
-    @Override
-    public char readChar() throws IOException {
-        char c = this.stream.readChar();
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            c = Character.reverseBytes(c);
-        }
-        return c;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readFloat(): Float {
+		var i: Int = stream.readInt()
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			i = Integer.reverseBytes(i)
+		}
+		return Float.intBitsToFloat(i)
+	}
 
-    @Override
-    public int readInt() throws IOException {
-        if (network) {
-            return VarInt.readVarInt(this.stream);
-        }
-        int i = this.stream.readInt();
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            i = Integer.reverseBytes(i);
-        }
-        return i;
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readDouble(): Double {
+		var l: Long = stream.readLong()
+		if (endianness === ByteOrder.LITTLE_ENDIAN) {
+			l = Long.reverseBytes(l)
+		}
+		return Double.longBitsToDouble(l)
+	}
 
-    @Override
-    public long readLong() throws IOException {
-        if (network) {
-            return VarInt.readVarLong(this.stream);
-        }
-        long l = this.stream.readLong();
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            l = Long.reverseBytes(l);
-        }
-        return l;
-    }
+	@Override
+	@Deprecated
+	@Throws(IOException::class)
+	fun readLine(): String {
+		return stream.readLine()
+	}
 
-    @Override
-    public float readFloat() throws IOException {
-        int i = this.stream.readInt();
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            i = Integer.reverseBytes(i);
-        }
-        return Float.intBitsToFloat(i);
-    }
+	@Override
+	@Throws(IOException::class)
+	fun readUTF(): String {
+		val bytes = ByteArray((if (isNetwork) VarInt.readUnsignedVarInt(stream) else readUnsignedShort()))
+		stream.read(bytes)
+		return String(bytes, StandardCharsets.UTF_8)
+	}
 
-    @Override
-    public double readDouble() throws IOException {
-        long l = this.stream.readLong();
-        if (endianness == ByteOrder.LITTLE_ENDIAN) {
-            l = Long.reverseBytes(l);
-        }
-        return Double.longBitsToDouble(l);
-    }
+	@Throws(IOException::class)
+	fun available(): Int {
+		return stream.available()
+	}
 
-    @Override
-    @Deprecated
-    public String readLine() throws IOException {
-        return this.stream.readLine();
-    }
+	@Override
+	@Throws(IOException::class)
+	fun close() {
+		stream.close()
+	}
 
-    @Override
-    public String readUTF() throws IOException {
-        int length = (int) (network ? VarInt.readUnsignedVarInt(stream) : this.readUnsignedShort());
-        byte[] bytes = new byte[length];
-        this.stream.read(bytes);
-        return new String(bytes, StandardCharsets.UTF_8);
-    }
-
-    public int available() throws IOException {
-        return this.stream.available();
-    }
-
-    @Override
-    public void close() throws IOException {
-        this.stream.close();
-    }
+	init {
+		this.stream = if (stream is DataInputStream) stream as DataInputStream else DataInputStream(stream)
+		this.endianness = endianness
+		isNetwork = network
+	}
 }

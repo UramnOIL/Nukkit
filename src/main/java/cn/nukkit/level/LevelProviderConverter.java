@@ -52,8 +52,8 @@ class LevelProviderConverter {
 
     LevelProvider perform() throws IOException {
         new File(path).mkdir();
-        File dat = new File(provider.getPath(), "level.dat.old");
-        new File(provider.getPath(), "level.dat").renameTo(dat);
+        File dat = new File(provider.path, "level.dat.old");
+        new File(provider.path, "level.dat").renameTo(dat);
         Utils.copyFile(dat, new File(path, "level.dat"));
         LevelProvider result;
         try {
@@ -77,7 +77,7 @@ class LevelProviderConverter {
         if (toClass == Anvil.class) {
             if (provider instanceof McRegion) {
                 new File(path, "region").mkdir();
-                for (File file : new File(provider.getPath() + "region/").listFiles()) {
+                for (File file : new File(provider.path + "region/").listFiles()) {
                     Matcher m = Pattern.compile("-?\\d+").matcher(file.getName());
                     int regionX, regionZ;
                     try {

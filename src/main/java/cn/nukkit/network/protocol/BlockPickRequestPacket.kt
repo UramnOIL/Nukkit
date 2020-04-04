@@ -1,36 +1,40 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.BlockVector3;
-import lombok.ToString;
+import cn.nukkit.math.BlockVector3
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class BlockPickRequestPacket extends DataPacket {
+class BlockPickRequestPacket : DataPacket() {
+	var x = 0
+	var y = 0
+	var z = 0
+	var addUserData = false
+	var selectedSlot = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.BLOCK_PICK_REQUEST_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public int x;
-    public int y;
-    public int z;
-    public boolean addUserData;
-    public int selectedSlot;
+	@Override
+	override fun decode() {
+		val v: BlockVector3 = this.getSignedBlockPosition()
+		x = v.x
+		y = v.y
+		z = v.z
+		addUserData = this.getBoolean()
+		selectedSlot = this.getByte()
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun encode() {
+	}
 
-    @Override
-    public void decode() {
-        BlockVector3 v = this.getSignedBlockPosition();
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        this.addUserData = this.getBoolean();
-        this.selectedSlot = this.getByte();
-    }
-
-    @Override
-    public void encode() {
-
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.BLOCK_PICK_REQUEST_PACKET
+	}
 }

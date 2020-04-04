@@ -1,46 +1,50 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class UpdateTradePacket extends DataPacket {
+class UpdateTradePacket : DataPacket() {
+	var windowId: Byte = 0
+	var windowType: Byte = 15 //trading id
+	var unknownVarInt1 // hardcoded to 0
+			= 0
+	var tradeTier = 0
+	var trader: Long = 0
+	var player: Long = 0
+	var displayName: String? = null
+	var screen2 = false
+	var isWilling = false
+	var offers: ByteArray?
 
-    public static final byte NETWORK_ID = ProtocolInfo.UPDATE_TRADE_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public byte windowId;
-    public byte windowType = 15; //trading id
-    public int unknownVarInt1; // hardcoded to 0
-    public int tradeTier;
-    public long trader;
-    public long player;
-    public String displayName;
-    public boolean screen2;
-    public boolean isWilling;
-    public byte[] offers;
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putByte(windowId)
+		this.putByte(windowType)
+		this.putVarInt(unknownVarInt1)
+		this.putVarInt(tradeTier)
+		this.putEntityUniqueId(player)
+		this.putEntityUniqueId(trader)
+		this.putString(displayName)
+		this.putBoolean(screen2)
+		this.putBoolean(isWilling)
+		this.put(offers)
+	}
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putByte(windowId);
-        this.putByte(windowType);
-        this.putVarInt(unknownVarInt1);
-        this.putVarInt(tradeTier);
-        this.putEntityUniqueId(player);
-        this.putEntityUniqueId(trader);
-        this.putString(displayName);
-        this.putBoolean(screen2);
-        this.putBoolean(isWilling);
-        this.put(this.offers);
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.UPDATE_TRADE_PACKET
+	}
 }

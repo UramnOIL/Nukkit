@@ -67,15 +67,15 @@ public class TimingsExport extends Thread {
      */
     public static void reportTimings(CommandSender sender) {
         JsonObject out = new JsonObject();
-        out.addProperty("version", Server.getInstance().getVersion());
-        out.addProperty("maxplayers", Server.getInstance().getMaxPlayers());
+        out.addProperty("version", Server.instance.getVersion());
+        out.addProperty("maxplayers", Server.instance.maxPlayers);
         out.addProperty("start", TimingsManager.timingStart / 1000);
         out.addProperty("end", System.currentTimeMillis() / 1000);
         out.addProperty("sampletime", (System.currentTimeMillis() - TimingsManager.timingStart) / 1000);
 
         if (!Timings.isPrivacy()) {
-            out.addProperty("server", Server.getInstance().getName());
-            out.addProperty("motd", Server.getInstance().getMotd());
+            out.addProperty("server", Server.instance.getName());
+            out.addProperty("motd", Server.instance.getMotd());
             out.addProperty("online-mode", false); //In MCPE we have permanent offline mode.
             out.addProperty("icon", ""); //"data:image/png;base64,"
         }
@@ -124,7 +124,7 @@ public class TimingsExport extends Thread {
         out.add("idmap", idmap);
 
         //Information about loaded plugins
-        out.add("plugins", JsonUtil.mapToObject(Server.getInstance().getPluginManager().getPlugins().values(), (plugin) -> {
+        out.add("plugins", JsonUtil.mapToObject(Server.instance.pluginManager.getPlugins().values(), (plugin) -> {
             JsonObject jsonPlugin = new JsonObject();
             jsonPlugin.addProperty("version", plugin.getDescription().getVersion());
             jsonPlugin.addProperty("description", plugin.getDescription().getDescription());// Sounds legit
@@ -136,7 +136,7 @@ public class TimingsExport extends Thread {
         //Information on the users Config
         JsonObject config = new JsonObject();
         if (!Timings.getIgnoredConfigSections().contains("all")) {
-            JsonObject nukkit = JsonUtil.toObject(Server.getInstance().getConfig().getRootSection());
+            JsonObject nukkit = JsonUtil.toObject(Server.instance.getConfig().getRootSection());
             Timings.getIgnoredConfigSections().forEach(nukkit::remove);
             config.add("nukkit", nukkit);
         } else {
@@ -203,7 +203,7 @@ public class TimingsExport extends Thread {
         try {
             HttpURLConnection con = (HttpURLConnection) new URL("http://timings.aikar.co/post").openConnection();
             con.setDoOutput(true);
-            con.setRequestProperty("User-Agent", "Nukkit/" + Server.getInstance().getName() + "/" + InetAddress.getLocalHost().getHostName());
+            con.setRequestProperty("User-Agent", "Nukkit/" + Server.instance.getName() + "/" + InetAddress.getLocalHost().getHostName());
             con.setRequestMethod("POST");
             con.setInstanceFollowRedirects(false);
 
@@ -218,7 +218,7 @@ public class TimingsExport extends Thread {
             if (con.getResponseCode() != 302) {
                 this.sender.sendMessage(new TranslationContainer("nukkit.command.timings.uploadError", String.valueOf(con.getResponseCode()), con.getResponseMessage()));
                 if (response != null) {
-                    Server.getInstance().getLogger().alert(response);
+                    Server.instance.getLogger().alert(response);
                 }
                 return;
             }
@@ -226,29 +226,29 @@ public class TimingsExport extends Thread {
             String location = con.getHeaderField("Location");
             this.sender.sendMessage(new TranslationContainer("nukkit.command.timings.timingsLocation", location));
             if (!(this.sender instanceof ConsoleCommandSender)) {
-                Server.getInstance().getLogger().info(Server.getInstance().getLanguage().translateString("nukkit.command.timings.timingsLocation", location));
+                Server.instance.getLogger().info(Server.instance.getLanguage().translateString("nukkit.command.timings.timingsLocation", location));
             }
 
             if (response != null && !response.isEmpty()) {
-                Server.getInstance().getLogger().info(Server.getInstance().getLanguage().translateString("nukkit.command.timings.timingsResponse", response));
+                Server.instance.getLogger().info(Server.instance.getLanguage().translateString("nukkit.command.timings.timingsResponse", response));
             }
 
-            File timingFolder = new File(Server.getInstance().getDataPath() + File.separator + "timings");
+            File timingFolder = new File(Server.instance.dataPath + File.separator + "timings");
             timingFolder.mkdirs();
             String fileName = timingFolder + File.separator + new SimpleDateFormat("'timings-'yyyy-MM-dd-hh-mm'.txt'").format(new Date());
 
             FileWriter writer = new FileWriter(fileName);
-            writer.write(Server.getInstance().getLanguage().translateString("nukkit.command.timings.timingsLocation", location) + "\n\n");
+            writer.write(Server.instance.getLanguage().translateString("nukkit.command.timings.timingsLocation", location) + "\n\n");
             writer.write(new GsonBuilder().setPrettyPrinting().create().toJson(this.out));
             writer.close();
 
-            Server.getInstance().getLogger().info(Server.getInstance().getLanguage().translateString("nukkit.command.timings.timingsWrite", fileName));
+            Server.instance.getLogger().info(Server.instance.getLanguage().translateString("nukkit.command.timings.timingsWrite", fileName));
         } catch (IOException exception) {
             this.sender.sendMessage(TextFormat.RED + "" + new TranslationContainer("nukkit.command.timings.reportError"));
             if (response != null) {
-                Server.getInstance().getLogger().alert(response);
+                Server.instance.getLogger().alert(response);
             }
-            Server.getInstance().getLogger().logException(exception);
+            Server.instance.getLogger().logException(exception);
         }
     }
 
@@ -265,7 +265,7 @@ public class TimingsExport extends Thread {
 
         } catch (IOException exception) {
             this.sender.sendMessage(TextFormat.RED + "" + new TranslationContainer("nukkit.command.timings.reportError"));
-            Server.getInstance().getLogger().warning(con.getResponseMessage(), exception);
+            Server.instance.getLogger().warning(con.getResponseMessage(), exception);
             return null;
         }
     }

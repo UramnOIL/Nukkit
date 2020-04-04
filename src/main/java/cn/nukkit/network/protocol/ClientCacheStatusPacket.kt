@@ -1,23 +1,30 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-public class ClientCacheStatusPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.CLIENT_CACHE_STATUS_PACKET;
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
-    public boolean supported;
+class ClientCacheStatusPacket : DataPacket() {
+	var supported = false
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void decode() {
-        this.supported = this.getBoolean();
-    }
+	@Override
+	override fun decode() {
+		supported = this.getBoolean()
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putBoolean(this.supported);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putBoolean(supported)
+	}
+
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.CLIENT_CACHE_STATUS_PACKET
+	}
 }

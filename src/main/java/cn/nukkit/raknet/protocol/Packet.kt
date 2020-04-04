@@ -1,186 +1,170 @@
-package cn.nukkit.raknet.protocol;
+package cn.nukkit.raknet.protocol
 
-import cn.nukkit.utils.Binary;
-
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import cn.nukkit.utils.Binary
+import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
+import java.util.*
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public abstract class Packet implements Cloneable {
+abstract class Packet : Cloneable {
+	protected var offset = 0
+	var buffer: ByteArray?
+	var sendTime: Long? = null
+	abstract val iD: Byte
+	protected operator fun get(len: Int): ByteArray {
+		if (len < 0) {
+			offset = buffer!!.size - 1
+			return ByteArray(0)
+		}
+		val buffer = ByteArray(len)
+		for (i in 0 until len) {
+			buffer[i] = this.buffer!![offset++]
+		}
+		return buffer
+	}
 
-    protected int offset = 0;
-    public byte[] buffer;
-    public Long sendTime;
+	protected val all: ByteArray
+		protected get() = this.get()
 
-    public abstract byte getID();
+	protected fun get(): ByteArray {
+		return try {
+			Arrays.copyOfRange(buffer, offset, buffer!!.size - 1)
+		} catch (e: Exception) {
+			ByteArray(0)
+		}
+	}
 
-    protected byte[] get(int len) {
-        if (len < 0) {
-            this.offset = this.buffer.length - 1;
-            return new byte[0];
-        }
+	protected val long: Long
+		protected get() = Binary.readLong(this[8])
 
-        byte[] buffer = new byte[len];
-        for (int i = 0; i < len; i++) {
-            buffer[i] = this.buffer[this.offset++];
-        }
-        return buffer;
-    }
+	protected val int: Int
+		protected get() = Binary.readInt(this[4])
 
-    protected byte[] getAll() {
-        return this.get();
-    }
+	protected val signedShort: Short
+		protected get() = short.toShort()
 
-    protected byte[] get() {
-        try {
-            return Arrays.copyOfRange(this.buffer, this.offset, this.buffer.length - 1);
-        } catch (Exception e) {
-            return new byte[0];
-        }
-    }
+	protected val short: Int
+		protected get() = Binary.readShort(this[2])
 
-    protected long getLong() {
-        return Binary.readLong(this.get(8));
-    }
+	protected val triad: Int
+		protected get() = Binary.readTriad(this[3])
 
-    protected int getInt() {
-        return Binary.readInt(this.get(4));
-    }
+	protected val lTriad: Int
+		protected get() = Binary.readLTriad(this[3])
 
-    protected short getSignedShort() {
-        return (short) this.getShort();
-    }
+	protected val byte: Byte
+		protected get() = buffer!![offset++]
 
-    protected int getShort() {
-        return Binary.readShort(this.get(2));
-    }
+	protected val string: String
+		protected get() = String(this[signedShort.toInt()], StandardCharsets.UTF_8)
 
-    protected int getTriad() {
-        return Binary.readTriad(this.get(3));
-    }
+	//todo IPV6 SUPPORT
+	protected val address: InetSocketAddress?
+		protected get() {
+			val version = byte
+			return if (version.toInt() == 4) {
+				val addr: String = (byte.inv() and 0xff).toString() + "." + (byte.inv() and 0xff) + "." + (byte.inv() and 0xff) + "." + (byte.inv() and 0xff)
+				val port = short
+				InetSocketAddress(addr, port)
+			} else {
+				//todo IPV6 SUPPORT
+				null
+			}
+		}
 
-    protected int getLTriad() {
-        return Binary.readLTriad(this.get(3));
-    }
+	protected fun feof(): Boolean {
+		return !(offset >= 0 && offset + 1 <= buffer!!.size)
+	}
 
-    protected byte getByte() {
-        return this.buffer[this.offset++];
-    }
+	protected fun put(b: ByteArray) {
+		buffer = Binary.appendBytes(buffer, *b)
+	}
 
-    protected String getString() {
-        return new String(this.get(this.getSignedShort()), StandardCharsets.UTF_8);
-    }
+	protected fun putLong(v: Long) {
+		put(Binary.writeLong(v))
+	}
 
-    protected InetSocketAddress getAddress() {
-        byte version = this.getByte();
-        if (version == 4) {
-            String addr = ((~this.getByte()) & 0xff) + "." + ((~this.getByte()) & 0xff) + "." + ((~this.getByte()) & 0xff) + "." + ((~this.getByte()) & 0xff);
-            int port = this.getShort();
-            return new InetSocketAddress(addr, port);
-        } else {
-            //todo IPV6 SUPPORT
-            return null;
-        }
-    }
+	protected fun putInt(v: Int) {
+		put(Binary.writeInt(v))
+	}
 
-    protected boolean feof() {
-        return !(this.offset >= 0 && this.offset + 1 <= this.buffer.length);
-    }
+	protected fun putShort(v: Int) {
+		put(Binary.writeShort(v))
+	}
 
-    protected void put(byte[] b) {
-        this.buffer = Binary.appendBytes(this.buffer, b);
-    }
+	protected fun putSignedShort(v: Short) {
+		put(Binary.writeShort(v and 0xffff))
+	}
 
-    protected void putLong(long v) {
-        this.put(Binary.writeLong(v));
-    }
+	protected fun putTriad(v: Int) {
+		put(Binary.writeTriad(v))
+	}
 
-    protected void putInt(int v) {
-        this.put(Binary.writeInt(v));
-    }
+	protected fun putLTriad(v: Int) {
+		put(Binary.writeLTriad(v))
+	}
 
-    protected void putShort(int v) {
-        this.put(Binary.writeShort(v));
-    }
+	protected fun putByte(b: Byte) {
+		val newBytes = ByteArray(buffer!!.size + 1)
+		System.arraycopy(buffer, 0, newBytes, 0, buffer!!.size)
+		newBytes[buffer!!.size] = b
+		buffer = newBytes
+	}
 
-    protected void putSignedShort(short v) {
-        this.put(Binary.writeShort(v & 0xffff));
-    }
+	protected fun putString(str: String) {
+		val b = str.toByteArray(StandardCharsets.UTF_8)
+		putShort(b.size)
+		put(b)
+	}
 
-    protected void putTriad(int v) {
-        this.put(Binary.writeTriad(v));
-    }
+	protected fun putAddress(addr: String, port: Int, version: Byte = 4.toByte()) {
+		putByte(version)
+		if (version.toInt() == 4) {
+			for (b in addr.split("\\.").toTypedArray()) {
+				putByte((Integer.valueOf(b).inv() and 0xff).toByte())
+			}
+			putShort(port)
+		} else {
+			//todo ipv6
+		}
+	}
 
-    protected void putLTriad(int v) {
-        this.put(Binary.writeLTriad(v));
-    }
+	protected fun putAddress(address: InetSocketAddress) {
+		this.putAddress(address.hostString, address.port)
+	}
 
-    protected void putByte(byte b) {
-        byte[] newBytes = new byte[this.buffer.length + 1];
-        System.arraycopy(this.buffer, 0, newBytes, 0, this.buffer.length);
-        newBytes[this.buffer.length] = b;
-        this.buffer = newBytes;
-    }
+	open fun encode() {
+		buffer = byteArrayOf(iD)
+	}
 
-    protected void putString(String str) {
-        byte[] b = str.getBytes(StandardCharsets.UTF_8);
-        this.putShort(b.length);
-        this.put(b);
-    }
+	open fun decode() {
+		offset = 1
+	}
 
-    protected void putAddress(String addr, int port) {
-        this.putAddress(addr, port, (byte) 4);
-    }
+	open fun clean(): Packet? {
+		buffer = null
+		offset = 0
+		sendTime = null
+		return this
+	}
 
-    protected void putAddress(String addr, int port, byte version) {
-        this.putByte(version);
-        if (version == 4) {
-            for (String b : addr.split("\\.")) {
-                this.putByte((byte) ((~Integer.valueOf(b)) & 0xff));
-            }
-            this.putShort(port);
-        } else {
-            //todo ipv6
-        }
-    }
+	@Throws(CloneNotSupportedException::class)
+	public override fun clone(): Packet {
+		val packet = super.clone() as Packet
+		packet.buffer = buffer!!.clone()
+		return packet
+	}
 
-    protected void putAddress(InetSocketAddress address) {
-        this.putAddress(address.getHostString(), address.getPort());
-    }
-
-    public void encode() {
-        this.buffer = new byte[]{getID()};
-    }
-
-    public void decode() {
-        this.offset = 1;
-    }
-
-    public Packet clean() {
-        this.buffer = null;
-        this.offset = 0;
-        this.sendTime = null;
-        return this;
-    }
-
-    @Override
-    public Packet clone() throws CloneNotSupportedException {
-        Packet packet = (Packet) super.clone();
-        packet.buffer = this.buffer.clone();
-        return packet;
-    }
-
-    /**
-     * A factory to create new packet instances
-     */
-    public interface PacketFactory {
-        /**
-         * Creates the packet
-         */
-        Packet create();
-    }
+	/**
+	 * A factory to create new packet instances
+	 */
+	interface PacketFactory {
+		/**
+		 * Creates the packet
+		 */
+		fun create(): Packet
+	}
 }

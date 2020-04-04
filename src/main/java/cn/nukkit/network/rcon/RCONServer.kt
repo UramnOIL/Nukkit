@@ -1,216 +1,194 @@
-package cn.nukkit.network.rcon;
+package cn.nukkit.network.rcon
 
-import cn.nukkit.Server;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.nio.channels.spi.SelectorProvider;
-import java.nio.charset.Charset;
-import java.util.*;
+import cn.nukkit.Server
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.nio.BufferUnderflowException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.channels.SelectionKey
+import java.nio.channels.Selector
+import java.nio.channels.ServerSocketChannel
+import java.nio.channels.SocketChannel
+import java.nio.channels.spi.SelectorProvider
+import java.nio.charset.Charset
+import java.util.*
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Thread that performs all RCON network work. A server.
  *
  * @author Tee7even
  */
-public class RCONServer extends Thread {
-    private static final int SERVERDATA_AUTH = 3;
-    private static final int SERVERDATA_AUTH_RESPONSE = 2;
-    private static final int SERVERDATA_EXECCOMMAND = 2;
-    private static final int SERVERDATA_RESPONSE_VALUE = 0;
+class RCONServer(address: String?, port: Int, password: String?) : Thread() {
+	@Volatile
+	private var running: Boolean
+	private val serverChannel: ServerSocketChannel?
+	private val selector: Selector?
+	private val password: String?
+	private val rconSessions: Set<SocketChannel?>? = HashSet()
+	private val receiveQueue: List<RCONCommand?>? = ArrayList()
+	private val sendQueues: Map<SocketChannel?, List<RCONPacket?>?>? = HashMap()
+	fun receive(): RCONCommand? {
+		synchronized(receiveQueue) {
+			if (!receiveQueue!!.isEmpty()) {
+				val command: RCONCommand? = receiveQueue[0]
+				receiveQueue.remove(0)
+				return command
+			}
+			return null
+		}
+	}
 
-    private volatile boolean running;
+	fun respond(channel: SocketChannel?, id: Int, response: String?) {
+		send(channel, RCONPacket(id, SERVERDATA_RESPONSE_VALUE, response.getBytes()))
+	}
 
-    private ServerSocketChannel serverChannel;
-    private Selector selector;
+	fun close() {
+		running = false
+		selector.wakeup()
+	}
 
-    private String password;
-    private final Set<SocketChannel> rconSessions = new HashSet<>();
+	fun run() {
+		while (running) {
+			try {
+				synchronized(sendQueues) {
+					for (channel in sendQueues.keySet()) {
+						channel.keyFor(selector).interestOps(SelectionKey.OP_WRITE)
+					}
+				}
+				selector.select()
+				val selectedKeys: Iterator<SelectionKey?> = selector.selectedKeys().iterator()
+				while (selectedKeys.hasNext()) {
+					val key: SelectionKey? = selectedKeys.next()
+					selectedKeys.remove()
+					if (key.isAcceptable()) {
+						val serverSocketChannel: ServerSocketChannel = key.channel() as ServerSocketChannel
+						val socketChannel: SocketChannel = serverSocketChannel.accept()
+						socketChannel.socket()
+						socketChannel.configureBlocking(false)
+						socketChannel.register(selector, SelectionKey.OP_READ)
+					} else if (key.isReadable()) {
+						read(key)
+					} else if (key.isWritable()) {
+						write(key)
+					}
+				}
+			} catch (exception: BufferUnderflowException) {
+				//Corrupted packet, ignore
+			} catch (exception: Exception) {
+				Server.instance.getLogger().logException(exception)
+			}
+		}
+		try {
+			serverChannel.keyFor(selector).cancel()
+			serverChannel.close()
+			selector.close()
+		} catch (exception: IOException) {
+			Server.instance.getLogger().logException(exception)
+		}
+		synchronized(this) { this.notify() }
+	}
 
-    private final List<RCONCommand> receiveQueue = new ArrayList<>();
-    private final Map<SocketChannel, List<RCONPacket>> sendQueues = new HashMap<>();
+	@Throws(IOException::class)
+	private fun read(key: SelectionKey?) {
+		val channel: SocketChannel = key.channel() as SocketChannel
+		val buffer: ByteBuffer = ByteBuffer.allocate(4096)
+		buffer.order(ByteOrder.LITTLE_ENDIAN)
+		val bytesRead: Int
+		bytesRead = try {
+			channel.read(buffer)
+		} catch (exception: IOException) {
+			key.cancel()
+			channel.close()
+			rconSessions.remove(channel)
+			sendQueues.remove(channel)
+			return
+		}
+		if (bytesRead == -1) {
+			key.cancel()
+			channel.close()
+			rconSessions.remove(channel)
+			sendQueues.remove(channel)
+			return
+		}
+		buffer.flip()
+		handle(channel, RCONPacket(buffer))
+	}
 
-    public RCONServer(String address, int port, String password) throws IOException {
-        this.setName("RCON");
-        this.running = true;
+	private fun handle(channel: SocketChannel?, packet: RCONPacket?) {
+		when (packet.getType()) {
+			SERVERDATA_AUTH -> {
+				val payload = ByteArray(1)
+				if (String(packet.getPayload(), Charset.forName("UTF-8")).equals(password)) {
+					rconSessions.add(channel)
+					send(channel, RCONPacket(packet.getId(), SERVERDATA_AUTH_RESPONSE, payload))
+					return
+				}
+				send(channel, RCONPacket(-1, SERVERDATA_AUTH_RESPONSE, payload))
+			}
+			SERVERDATA_EXECCOMMAND -> {
+				if (!rconSessions!!.contains(channel)) {
+					return
+				}
+				val command: String = String(packet.getPayload(), Charset.forName("UTF-8")).trim()
+				synchronized(receiveQueue) { receiveQueue.add(RCONCommand(channel, packet.getId(), command)) }
+			}
+		}
+	}
 
-        this.serverChannel = ServerSocketChannel.open();
-        this.serverChannel.configureBlocking(false);
-        this.serverChannel.socket().bind(new InetSocketAddress(address, port));
+	@Throws(IOException::class)
+	private fun write(key: SelectionKey?) {
+		val channel: SocketChannel = key.channel() as SocketChannel
+		synchronized(sendQueues) {
+			val queue: List<RCONPacket?>? = sendQueues!![channel]
+			val buffer: ByteBuffer = queue!![0]!!.toBuffer()
+			try {
+				channel.write(buffer)
+				queue.remove(0)
+			} catch (exception: IOException) {
+				key.cancel()
+				channel.close()
+				rconSessions.remove(channel)
+				sendQueues.remove(channel)
+				return
+			}
+			if (queue.isEmpty()) {
+				sendQueues.remove(channel)
+			}
+			key.interestOps(SelectionKey.OP_READ)
+		}
+	}
 
-        this.selector = SelectorProvider.provider().openSelector();
-        this.serverChannel.register(this.selector, SelectionKey.OP_ACCEPT);
+	private fun send(channel: SocketChannel?, packet: RCONPacket?) {
+		if (!channel.keyFor(selector).isValid()) {
+			return
+		}
+		synchronized(sendQueues) {
+			val queue: List<RCONPacket?> = sendQueues.computeIfAbsent(channel) { k -> ArrayList() }
+			queue.add(packet)
+		}
+		selector.wakeup()
+	}
 
-        this.password = password;
-    }
+	companion object {
+		private const val SERVERDATA_AUTH = 3
+		private const val SERVERDATA_AUTH_RESPONSE = 2
+		private const val SERVERDATA_EXECCOMMAND = 2
+		private const val SERVERDATA_RESPONSE_VALUE = 0
+	}
 
-    public RCONCommand receive() {
-        synchronized (this.receiveQueue) {
-            if (!this.receiveQueue.isEmpty()) {
-                RCONCommand command = this.receiveQueue.get(0);
-                this.receiveQueue.remove(0);
-                return command;
-            }
-
-            return null;
-        }
-    }
-
-    public void respond(SocketChannel channel, int id, String response) {
-        this.send(channel, new RCONPacket(id, SERVERDATA_RESPONSE_VALUE, response.getBytes()));
-    }
-
-    public void close() {
-        this.running = false;
-        this.selector.wakeup();
-    }
-
-    public void run() {
-        while (this.running) {
-            try {
-                synchronized (this.sendQueues) {
-                    for (SocketChannel channel : this.sendQueues.keySet()) {
-                        channel.keyFor(this.selector).interestOps(SelectionKey.OP_WRITE);
-                    }
-                }
-
-                this.selector.select();
-
-                Iterator<SelectionKey> selectedKeys = this.selector.selectedKeys().iterator();
-                while (selectedKeys.hasNext()) {
-                    SelectionKey key = selectedKeys.next();
-                    selectedKeys.remove();
-
-                    if (key.isAcceptable()) {
-                        ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
-
-                        SocketChannel socketChannel = serverSocketChannel.accept();
-                        socketChannel.socket();
-                        socketChannel.configureBlocking(false);
-                        socketChannel.register(this.selector, SelectionKey.OP_READ);
-                    } else if (key.isReadable()) {
-                        this.read(key);
-                    } else if (key.isWritable()) {
-                        this.write(key);
-                    }
-                }
-            } catch (BufferUnderflowException exception) {
-                //Corrupted packet, ignore
-            } catch (Exception exception) {
-                Server.getInstance().getLogger().logException(exception);
-            }
-        }
-
-        try {
-            this.serverChannel.keyFor(this.selector).cancel();
-            this.serverChannel.close();
-            this.selector.close();
-        } catch (IOException exception) {
-            Server.getInstance().getLogger().logException(exception);
-        }
-
-        synchronized (this) {
-            this.notify();
-        }
-    }
-
-    private void read(SelectionKey key) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
-        ByteBuffer buffer = ByteBuffer.allocate(4096);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-
-        int bytesRead;
-        try {
-            bytesRead = channel.read(buffer);
-        } catch (IOException exception) {
-            key.cancel();
-            channel.close();
-            this.rconSessions.remove(channel);
-            this.sendQueues.remove(channel);
-            return;
-        }
-
-        if (bytesRead == -1) {
-            key.cancel();
-            channel.close();
-            this.rconSessions.remove(channel);
-            this.sendQueues.remove(channel);
-            return;
-        }
-
-        buffer.flip();
-        this.handle(channel, new RCONPacket(buffer));
-    }
-
-    private void handle(SocketChannel channel, RCONPacket packet) {
-        switch (packet.getType()) {
-            case SERVERDATA_AUTH:
-                byte[] payload = new byte[1];
-
-                if (new String(packet.getPayload(), Charset.forName("UTF-8")).equals(this.password)) {
-                    this.rconSessions.add(channel);
-                    this.send(channel, new RCONPacket(packet.getId(), SERVERDATA_AUTH_RESPONSE, payload));
-                    return;
-                }
-
-                this.send(channel, new RCONPacket(-1, SERVERDATA_AUTH_RESPONSE, payload));
-                break;
-            case SERVERDATA_EXECCOMMAND:
-                if (!this.rconSessions.contains(channel)) {
-                    return;
-                }
-
-                String command = new String(packet.getPayload(), Charset.forName("UTF-8")).trim();
-                synchronized (this.receiveQueue) {
-                    this.receiveQueue.add(new RCONCommand(channel, packet.getId(), command));
-                }
-                break;
-        }
-    }
-
-    private void write(SelectionKey key) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
-
-        synchronized (this.sendQueues) {
-            List<RCONPacket> queue = this.sendQueues.get(channel);
-
-            ByteBuffer buffer = queue.get(0).toBuffer();
-            try {
-                channel.write(buffer);
-                queue.remove(0);
-            } catch (IOException exception) {
-                key.cancel();
-                channel.close();
-                this.rconSessions.remove(channel);
-                this.sendQueues.remove(channel);
-                return;
-            }
-
-            if (queue.isEmpty()) {
-                this.sendQueues.remove(channel);
-            }
-
-            key.interestOps(SelectionKey.OP_READ);
-        }
-    }
-
-    private void send(SocketChannel channel, RCONPacket packet) {
-        if (!channel.keyFor(this.selector).isValid()) {
-            return;
-        }
-
-        synchronized (this.sendQueues) {
-            List<RCONPacket> queue = sendQueues.computeIfAbsent(channel, k -> new ArrayList<>());
-            queue.add(packet);
-        }
-
-        this.selector.wakeup();
-    }
+	init {
+		this.setName("RCON")
+		running = true
+		serverChannel = ServerSocketChannel.open()
+		serverChannel.configureBlocking(false)
+		serverChannel.socket().bind(InetSocketAddress(address, port))
+		selector = SelectorProvider.provider().openSelector()
+		serverChannel.register(selector, SelectionKey.OP_ACCEPT)
+		this.password = password
+	}
 }

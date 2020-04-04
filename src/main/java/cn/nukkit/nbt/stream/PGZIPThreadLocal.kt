@@ -1,15 +1,14 @@
-package cn.nukkit.nbt.stream;
+package cn.nukkit.nbt.stream
 
-public class PGZIPThreadLocal extends ThreadLocal<PGZIPState> {
+class PGZIPThreadLocal(parent: PGZIPOutputStream) : ThreadLocal<PGZIPState?>() {
+	private val parent: PGZIPOutputStream
 
-    private final PGZIPOutputStream parent;
+	@Override
+	protected fun initialValue(): PGZIPState {
+		return PGZIPState(parent)
+	}
 
-    public PGZIPThreadLocal(PGZIPOutputStream parent) {
-        this.parent = parent;
-    }
-
-    @Override
-    protected PGZIPState initialValue() {
-        return new PGZIPState(parent);
-    }
+	init {
+		this.parent = parent
+	}
 }

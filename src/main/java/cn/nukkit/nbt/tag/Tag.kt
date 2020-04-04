@@ -1,167 +1,141 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import java.io.PrintStream
+import kotlin.jvm.Throws
 
-import java.io.IOException;
-import java.io.PrintStream;
+abstract class Tag protected constructor(name: String?) {
+	private var name: String? = null
 
-public abstract class Tag {
-    public static final byte TAG_End = 0;
-    public static final byte TAG_Byte = 1;
-    public static final byte TAG_Short = 2;
-    public static final byte TAG_Int = 3;
-    public static final byte TAG_Long = 4;
-    public static final byte TAG_Float = 5;
-    public static final byte TAG_Double = 6;
-    public static final byte TAG_Byte_Array = 7;
-    public static final byte TAG_String = 8;
-    public static final byte TAG_List = 9;
-    public static final byte TAG_Compound = 10;
-    public static final byte TAG_Int_Array = 11;
+	@Throws(IOException::class)
+	abstract fun write(dos: NBTOutputStream?)
 
-    private String name;
+	@Throws(IOException::class)
+	abstract fun load(dis: NBTInputStream?)
+	abstract override fun toString(): String
+	abstract val id: Byte
 
-    abstract void write(NBTOutputStream dos) throws IOException;
+	@Override
+	fun equals(obj: Object): Boolean {
+		if (obj !is Tag) {
+			return false
+		}
+		val o = obj as Tag
+		return id == o.id && !(name == null && o.name != null || name != null && o.name == null) && !(name != null && !name!!.equals(o.name))
+	}
 
-    abstract void load(NBTInputStream dis) throws IOException;
+	fun print(out: PrintStream) {
+		print("", out)
+	}
 
-    public abstract String toString();
+	fun print(prefix: String?, out: PrintStream) {
+		val name = getName()
+		out.print(prefix)
+		out.print(getTagName(id))
+		if (name.length() > 0) {
+			out.print("(\"$name\")")
+		}
+		out.print(": ")
+		out.println(toString())
+	}
 
-    public abstract byte getId();
+	fun setName(name: String?): Tag {
+		if (name == null) {
+			this.name = ""
+		} else {
+			this.name = name
+		}
+		return this
+	}
 
-    protected Tag(String name) {
-        if (name == null) {
-            this.name = "";
-        } else {
-            this.name = name;
-        }
-    }
+	fun getName(): String {
+		return if (name == null) "" else name
+	}
 
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Tag)) {
-            return false;
-        }
-        Tag o = (Tag) obj;
-        return getId() == o.getId() && !(name == null && o.name != null || name != null && o.name == null) && !(name != null && !name.equals(o.name));
-    }
+	abstract fun copy(): Tag
+	abstract fun parseValue(): Object?
 
-    public void print(PrintStream out) {
-        print("", out);
-    }
+	companion object {
+		const val TAG_End: Byte = 0
+		const val TAG_Byte: Byte = 1
+		const val TAG_Short: Byte = 2
+		const val TAG_Int: Byte = 3
+		const val TAG_Long: Byte = 4
+		const val TAG_Float: Byte = 5
+		const val TAG_Double: Byte = 6
+		const val TAG_Byte_Array: Byte = 7
+		const val TAG_String: Byte = 8
+		const val TAG_List: Byte = 9
+		const val TAG_Compound: Byte = 10
+		const val TAG_Int_Array: Byte = 11
 
-    public void print(String prefix, PrintStream out) {
-        String name = getName();
+		@Throws(IOException::class)
+		fun readNamedTag(dis: NBTInputStream): Tag {
+			val type: Byte = dis.readByte()
+			if (type.toInt() == 0) return EndTag()
+			val name: String = dis.readUTF()
+			val tag = newTag(type, name)
+			tag.load(dis)
+			return tag
+		}
 
-        out.print(prefix);
-        out.print(getTagName(getId()));
-        if (name.length() > 0) {
-            out.print("(\"" + name + "\")");
-        }
-        out.print(": ");
-        out.println(toString());
-    }
+		@Throws(IOException::class)
+		fun writeNamedTag(tag: Tag, dos: NBTOutputStream) {
+			writeNamedTag(tag, tag.getName(), dos)
+		}
 
-    public Tag setName(String name) {
-        if (name == null) {
-            this.name = "";
-        } else {
-            this.name = name;
-        }
-        return this;
-    }
+		@Throws(IOException::class)
+		fun writeNamedTag(tag: Tag, name: String?, dos: NBTOutputStream) {
+			dos.writeByte(tag.id)
+			if (tag.id == TAG_End) return
+			dos.writeUTF(name)
+			tag.write(dos)
+		}
 
-    public String getName() {
-        if (name == null) return "";
-        return name;
-    }
+		fun newTag(type: Byte, name: String?): Tag {
+			when (type) {
+				TAG_End -> return EndTag()
+				TAG_Byte -> return ByteTag(name)
+				TAG_Short -> return ShortTag(name)
+				TAG_Int -> return IntTag(name)
+				TAG_Long -> return LongTag(name)
+				TAG_Float -> return FloatTag(name)
+				TAG_Double -> return DoubleTag(name)
+				TAG_Byte_Array -> return ByteArrayTag(name)
+				TAG_Int_Array -> return IntArrayTag(name)
+				TAG_String -> return StringTag(name)
+				TAG_List -> return ListTag(name)
+				TAG_Compound -> return CompoundTag(name)
+			}
+			return EndTag()
+		}
 
-    public static Tag readNamedTag(NBTInputStream dis) throws IOException {
-        byte type = dis.readByte();
-        if (type == 0) return new EndTag();
+		fun getTagName(type: Byte): String {
+			when (type) {
+				TAG_End -> return "TAG_End"
+				TAG_Byte -> return "TAG_Byte"
+				TAG_Short -> return "TAG_Short"
+				TAG_Int -> return "TAG_Int"
+				TAG_Long -> return "TAG_Long"
+				TAG_Float -> return "TAG_Float"
+				TAG_Double -> return "TAG_Double"
+				TAG_Byte_Array -> return "TAG_Byte_Array"
+				TAG_Int_Array -> return "TAG_Int_Array"
+				TAG_String -> return "TAG_String"
+				TAG_List -> return "TAG_List"
+				TAG_Compound -> return "TAG_Compound"
+			}
+			return "UNKNOWN"
+		}
+	}
 
-        String name = dis.readUTF();
-
-        Tag tag = newTag(type, name);
-
-        tag.load(dis);
-        return tag;
-    }
-
-    public static void writeNamedTag(Tag tag, NBTOutputStream dos) throws IOException {
-        writeNamedTag(tag, tag.getName(), dos);
-    }
-
-    public static void writeNamedTag(Tag tag, String name, NBTOutputStream dos) throws IOException {
-        dos.writeByte(tag.getId());
-        if (tag.getId() == Tag.TAG_End) return;
-        dos.writeUTF(name);
-
-        tag.write(dos);
-    }
-
-    public static Tag newTag(byte type, String name) {
-        switch (type) {
-            case TAG_End:
-                return new EndTag();
-            case TAG_Byte:
-                return new ByteTag(name);
-            case TAG_Short:
-                return new ShortTag(name);
-            case TAG_Int:
-                return new IntTag(name);
-            case TAG_Long:
-                return new LongTag(name);
-            case TAG_Float:
-                return new FloatTag(name);
-            case TAG_Double:
-                return new DoubleTag(name);
-            case TAG_Byte_Array:
-                return new ByteArrayTag(name);
-            case TAG_Int_Array:
-                return new IntArrayTag(name);
-            case TAG_String:
-                return new StringTag(name);
-            case TAG_List:
-                return new ListTag<>(name);
-            case TAG_Compound:
-                return new CompoundTag(name);
-        }
-        return new EndTag();
-    }
-
-    public static String getTagName(byte type) {
-        switch (type) {
-            case TAG_End:
-                return "TAG_End";
-            case TAG_Byte:
-                return "TAG_Byte";
-            case TAG_Short:
-                return "TAG_Short";
-            case TAG_Int:
-                return "TAG_Int";
-            case TAG_Long:
-                return "TAG_Long";
-            case TAG_Float:
-                return "TAG_Float";
-            case TAG_Double:
-                return "TAG_Double";
-            case TAG_Byte_Array:
-                return "TAG_Byte_Array";
-            case TAG_Int_Array:
-                return "TAG_Int_Array";
-            case TAG_String:
-                return "TAG_String";
-            case TAG_List:
-                return "TAG_List";
-            case TAG_Compound:
-                return "TAG_Compound";
-        }
-        return "UNKNOWN";
-    }
-
-    public abstract Tag copy();
-
-    public abstract Object parseValue();
+	init {
+		if (name == null) {
+			this.name = ""
+		} else {
+			this.name = name
+		}
+	}
 }

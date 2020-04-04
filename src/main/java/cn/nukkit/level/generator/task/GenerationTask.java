@@ -31,7 +31,7 @@ public class GenerationTask extends AsyncTask {
             return;
         }
 
-        SimpleChunkManager manager = (SimpleChunkManager) generator.getChunkManager();
+        SimpleChunkManager manager = (SimpleChunkManager) generator.chunkManager;
 
         if (manager == null) {
             this.state = false;

@@ -1,73 +1,66 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
-import cn.nukkit.utils.Binary;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import cn.nukkit.utils.Binary
+import java.io.IOException
+import java.util.Arrays
+import kotlin.jvm.Throws
 
-import java.io.IOException;
-import java.util.Arrays;
+class ByteArrayTag : Tag {
+	var data: ByteArray?
 
-public class ByteArrayTag extends Tag {
-    public byte[] data;
+	constructor(name: String?) : super(name) {}
+	constructor(name: String?, data: ByteArray?) : super(name) {
+		this.data = data
+	}
 
-    public ByteArrayTag(String name) {
-        super(name);
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		if (data == null) {
+			dos.writeInt(0)
+			return
+		}
+		dos.writeInt(data!!.size)
+		dos.write(data)
+	}
 
-    public ByteArrayTag(String name, byte[] data) {
-        super(name);
-        this.data = data;
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		val length: Int = dis.readInt()
+		data = ByteArray(length)
+		dis.readFully(data)
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        if (data == null) {
-            dos.writeInt(0);
-            return;
-        }
-        dos.writeInt(data.length);
-        dos.write(data);
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_Byte_Array
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-        int length = dis.readInt();
-        data = new byte[length];
-        dis.readFully(data);
-    }
+	@Override
+	override fun toString(): String {
+		return "ByteArrayTag " + this.getName().toString() + " (data: 0x" + Binary.bytesToHexString(data, true).toString() + " [" + data!!.size.toString() + " bytes])"
+	}
 
-    public byte[] getData() {
-        return data;
-    }
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val byteArrayTag = obj as ByteArrayTag
+			return data == null && byteArrayTag.data == null || data != null && Arrays.equals(data, byteArrayTag.data)
+		}
+		return false
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_Byte_Array;
-    }
+	@Override
+	override fun copy(): Tag {
+		val cp = ByteArray(data!!.size)
+		System.arraycopy(data, 0, cp, 0, data!!.size)
+		return ByteArrayTag(getName(), cp)
+	}
 
-    @Override
-    public String toString() {
-        return "ByteArrayTag " + this.getName() + " (data: 0x" + Binary.bytesToHexString(data, true) + " [" + data.length + " bytes])";
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            ByteArrayTag byteArrayTag = (ByteArrayTag) obj;
-            return ((data == null && byteArrayTag.data == null) || (data != null && Arrays.equals(data, byteArrayTag.data)));
-        }
-        return false;
-    }
-
-    @Override
-    public Tag copy() {
-        byte[] cp = new byte[data.length];
-        System.arraycopy(data, 0, cp, 0, data.length);
-        return new ByteArrayTag(getName(), cp);
-    }
-
-    @Override
-    public byte[] parseValue() {
-        return this.data;
-    }
+	@Override
+	override fun parseValue(): ByteArray? {
+		return data
+	}
 }

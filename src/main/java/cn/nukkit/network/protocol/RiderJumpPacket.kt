@@ -1,27 +1,32 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class RiderJumpPacket extends DataPacket {
+class RiderJumpPacket : DataPacket() {
+	var unknown = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.RIDER_JUMP_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public int unknown;
+	@Override
+	override fun decode() {
+		unknown = this.getVarInt()
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarInt(unknown)
+	}
 
-    @Override
-    public void decode() {
-        this.unknown = this.getVarInt();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarInt(this.unknown);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.RIDER_JUMP_PACKET
+	}
 }

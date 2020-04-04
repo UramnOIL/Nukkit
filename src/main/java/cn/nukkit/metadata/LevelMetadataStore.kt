@@ -1,18 +1,18 @@
-package cn.nukkit.metadata;
+package cn.nukkit.metadata
 
-import cn.nukkit.level.Level;
+import cn.nukkit.level.Level
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class LevelMetadataStore extends MetadataStore {
-
-    @Override
-    protected String disambiguate(Metadatable level, String metadataKey) {
-        if (!(level instanceof Level)) {
-            throw new IllegalArgumentException("Argument must be a Level instance");
-        }
-        return (((Level) level).getName() + ":" + metadataKey).toLowerCase();
-    }
+class LevelMetadataStore : MetadataStore() {
+	@Override
+	protected override fun disambiguate(level: Metadatable?, metadataKey: String?): String? {
+		if (level !is Level) {
+			throw IllegalArgumentException("Argument must be a Level instance")
+		}
+		return ((level as Level?).getName().toString() + ":" + metadataKey).toLowerCase()
+	}
 }

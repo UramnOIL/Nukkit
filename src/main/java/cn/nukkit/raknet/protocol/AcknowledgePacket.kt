@@ -1,107 +1,99 @@
-package cn.nukkit.raknet.protocol;
+package cn.nukkit.raknet.protocol
 
-import cn.nukkit.utils.Binary;
-import cn.nukkit.utils.BinaryStream;
-
-import java.util.TreeMap;
+import cn.nukkit.utils.Binary
+import cn.nukkit.utils.BinaryStream
+import java.util.*
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public abstract class AcknowledgePacket extends Packet {
+abstract class AcknowledgePacket : Packet() {
+	var packets: TreeMap<Int, Int>? = null
+	override fun encode() {
+		super.encode()
+		val count = packets!!.size
+		val packets = IntArray(count)
+		var index = 0
+		for (i in this.packets!!.values) {
+			packets[index++] = i
+		}
+		var records: Short = 0
+		val payload = BinaryStream()
+		if (count > 0) {
+			var pointer = 1
+			var start = packets[0]
+			var last = packets[0]
+			while (pointer < count) {
+				val current = packets[pointer++]
+				val diff = current - last
+				if (diff == 1) {
+					last = current
+				} else if (diff > 1) {
+					if (start == last) {
+						payload.putByte(0x01.toByte())
+						payload.put(Binary.writeLTriad(start))
+						last = current
+						start = last
+					} else {
+						payload.putByte(0x00.toByte())
+						payload.put(Binary.writeLTriad(start))
+						payload.put(Binary.writeLTriad(last))
+						last = current
+						start = last
+					}
+					++records
+				}
+			}
+			if (start == last) {
+				payload.putByte(0x01.toByte())
+				payload.put(Binary.writeLTriad(start))
+			} else {
+				payload.putByte(0x00.toByte())
+				payload.put(Binary.writeLTriad(start))
+				payload.put(Binary.writeLTriad(last))
+			}
+			++records
+		}
+		putShort(records.toInt())
+		buffer = Binary.appendBytes(
+				buffer,
+				*payload.buffer
+		)
+	}
 
-    public TreeMap<Integer, Integer> packets;
+	override fun decode() {
+		super.decode()
+		val count = this.signedShort
+		packets = TreeMap()
+		var cnt = 0
+		var i = 0
+		while (i < count && !feof() && cnt < 4096) {
+			if (this.byte.toInt() == 0) {
+				val start = this.lTriad
+				var end = this.lTriad
+				if (end - start > 512) {
+					end = start + 512
+				}
+				for (c in start..end) {
+					packets!![cnt++] = c
+				}
+			} else {
+				packets!![cnt++] = this.lTriad
+			}
+			++i
+		}
+	}
 
-    @Override
-    public void encode() {
-        super.encode();
-        int count = this.packets.size();
-        int[] packets = new int[count];
+	override fun clean(): Packet? {
+		packets = TreeMap()
+		return super.clean()
+	}
 
-        int index = 0;
-        for (int i : this.packets.values()) {
-            packets[index++] = i;
-        }
-        short records = 0;
-        BinaryStream payload = new BinaryStream();
-
-        if (count > 0) {
-            int pointer = 1;
-            int start = packets[0];
-            int last = packets[0];
-
-            while (pointer < count) {
-                int current = packets[pointer++];
-                int diff = current - last;
-                if (diff == 1) {
-                    last = current;
-                } else if (diff > 1) {
-
-                    if (start == last) {
-                        payload.putByte((byte) 0x01);
-                        payload.put(Binary.writeLTriad(start));
-                        start = last = current;
-                    } else {
-                        payload.putByte((byte) 0x00);
-                        payload.put(Binary.writeLTriad(start));
-                        payload.put(Binary.writeLTriad(last));
-                        start = last = current;
-                    }
-                    ++records;
-                }
-            }
-
-            if (start == last) {
-                payload.putByte((byte) 0x01);
-                payload.put(Binary.writeLTriad(start));
-            } else {
-                payload.putByte((byte) 0x00);
-                payload.put(Binary.writeLTriad(start));
-                payload.put(Binary.writeLTriad(last));
-            }
-            ++records;
-        }
-
-        this.putShort(records);
-        this.buffer = Binary.appendBytes(
-                this.buffer,
-                payload.getBuffer()
-        );
-    }
-
-    @Override
-    public void decode() {
-        super.decode();
-        short count = this.getSignedShort();
-        this.packets = new TreeMap<>();
-        int cnt = 0;
-        for (int i = 0; i < count && !this.feof() && cnt < 4096; ++i) {
-            if (this.getByte() == 0) {
-                int start = this.getLTriad();
-                int end = this.getLTriad();
-                if ((end - start) > 512) {
-                    end = start + 512;
-                }
-                for (int c = start; c <= end; ++c) {
-                    packets.put(cnt++, c);
-                }
-            } else {
-                this.packets.put(cnt++, this.getLTriad());
-            }
-        }
-    }
-
-    @Override
-    public Packet clean() {
-        this.packets = new TreeMap<>();
-        return super.clean();
-    }
-
-    @Override
-    public AcknowledgePacket clone() throws CloneNotSupportedException {
-        AcknowledgePacket packet = (AcknowledgePacket) super.clone();
-        packet.packets = new TreeMap<>(this.packets);
-        return packet;
-    }
+	@Throws(CloneNotSupportedException::class)
+	override fun clone(): AcknowledgePacket {
+		val packet = super.clone() as AcknowledgePacket
+		packet.packets = TreeMap(packets)
+		return packet
+	}
 }

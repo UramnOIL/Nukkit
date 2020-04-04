@@ -1,35 +1,39 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.BlockVector3;
-import lombok.ToString;
+import cn.nukkit.math.BlockVector3
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Created by Pub4Game on 03.07.2016.
  */
 @ToString
-public class ItemFrameDropItemPacket extends DataPacket {
+class ItemFrameDropItemPacket : DataPacket() {
+	var x = 0
+	var y = 0
+	var z = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.ITEM_FRAME_DROP_ITEM_PACKET;
+	@Override
+	override fun decode() {
+		val v: BlockVector3 = this.getBlockVector3()
+		z = v.z
+		y = v.y
+		x = v.x
+	}
 
-    public int x;
-    public int y;
-    public int z;
+	@Override
+	override fun encode() {
+	}
 
-    @Override
-    public void decode() {
-        BlockVector3 v = this.getBlockVector3();
-        this.z = v.z;
-        this.y = v.y;
-        this.x = v.x;
-    }
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void encode() {
-
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.ITEM_FRAME_DROP_ITEM_PACKET
+	}
 }

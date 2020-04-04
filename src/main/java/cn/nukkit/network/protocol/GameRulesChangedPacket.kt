@@ -1,30 +1,36 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.level.GameRules;
-import lombok.ToString;
+import cn.nukkit.level.GameRules
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class GameRulesChangedPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.GAME_RULES_CHANGED_PACKET;
+class GameRulesChangedPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var gameRules: GameRules? = null
 
-    public GameRules gameRules;
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		putGameRules(gameRules)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        putGameRules(gameRules);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.GAME_RULES_CHANGED_PACKET
+	}
 }

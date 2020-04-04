@@ -1,66 +1,52 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class UpdateBlockPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.UPDATE_BLOCK_PACKET;
+class UpdateBlockPacket : DataPacket() {
+	var x = 0
+	var z = 0
+	var y = 0
+	var blockRuntimeId = 0
+	var flags = 0
+	var dataLayer = 0
 
-    public static final int FLAG_NONE = 0b0000;
-    public static final int FLAG_NEIGHBORS = 0b0001;
-    public static final int FLAG_NETWORK = 0b0010;
-    public static final int FLAG_NOGRAPHIC = 0b0100;
-    public static final int FLAG_PRIORITY = 0b1000;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public static final int FLAG_ALL = (FLAG_NEIGHBORS | FLAG_NETWORK);
-    public static final int FLAG_ALL_PRIORITY = (FLAG_ALL | FLAG_PRIORITY);
+	@Override
+	override fun decode() {
+	}
 
-    public int x;
-    public int z;
-    public int y;
-    public int blockRuntimeId;
-    public int flags;
-    public int dataLayer = 0;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putBlockVector3(x, y, z)
+		this.putUnsignedVarInt(blockRuntimeId)
+		this.putUnsignedVarInt(flags)
+		this.putUnsignedVarInt(dataLayer)
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	class Entry(val x: Int, val z: Int, val y: Int, val blockId: Int, val blockData: Int, val flags: Int)
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putBlockVector3(x, y, z);
-        this.putUnsignedVarInt(blockRuntimeId);
-        this.putUnsignedVarInt(flags);
-        this.putUnsignedVarInt(dataLayer);
-    }
-
-    public static class Entry {
-        public final int x;
-        public final int z;
-        public final int y;
-        public final int blockId;
-        public final int blockData;
-        public final int flags;
-
-        public Entry(int x, int z, int y, int blockId, int blockData, int flags) {
-            this.x = x;
-            this.z = z;
-            this.y = y;
-            this.blockId = blockId;
-            this.blockData = blockData;
-            this.flags = flags;
-        }
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.UPDATE_BLOCK_PACKET
+		const val FLAG_NONE = 0
+		const val FLAG_NEIGHBORS = 1
+		const val FLAG_NETWORK = 2
+		const val FLAG_NOGRAPHIC = 4
+		const val FLAG_PRIORITY = 8
+		const val FLAG_ALL = FLAG_NEIGHBORS or FLAG_NETWORK
+		const val FLAG_ALL_PRIORITY = FLAG_ALL or FLAG_PRIORITY
+	}
 }

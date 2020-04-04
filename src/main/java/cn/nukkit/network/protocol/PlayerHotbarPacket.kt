@@ -1,33 +1,35 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.network.protocol.types.ContainerIds;
-import lombok.ToString;
+import cn.nukkit.network.protocol.types.ContainerIds
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class PlayerHotbarPacket extends DataPacket {
+class PlayerHotbarPacket : DataPacket() {
+	var selectedHotbarSlot = 0
+	var windowId: Int = ContainerIds.INVENTORY
+	var selectHotbarSlot = true
 
-    public int selectedHotbarSlot;
-    public int windowId = ContainerIds.INVENTORY;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.PLAYER_HOTBAR_PACKET
+	}
 
-    public boolean selectHotbarSlot = true;
+	@Override
+	override fun decode() {
+		selectedHotbarSlot = this.getUnsignedVarInt() as Int
+		windowId = this.getByte()
+		selectHotbarSlot = this.getBoolean()
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.PLAYER_HOTBAR_PACKET;
-    }
-
-    @Override
-    public void decode() {
-        this.selectedHotbarSlot = (int) this.getUnsignedVarInt();
-        this.windowId = this.getByte();
-        this.selectHotbarSlot = this.getBoolean();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putUnsignedVarInt(this.selectedHotbarSlot);
-        this.putByte((byte) this.windowId);
-        this.putBoolean(this.selectHotbarSlot);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putUnsignedVarInt(selectedHotbarSlot)
+		this.putByte(windowId.toByte())
+		this.putBoolean(selectHotbarSlot)
+	}
 }

@@ -1,60 +1,56 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import kotlin.jvm.Throws
 
-import java.io.IOException;
+class StringTag : Tag {
+	var data: String? = null
 
-public class StringTag extends Tag {
-    public String data;
+	constructor(name: String?) : super(name) {}
+	constructor(name: String?, data: String?) : super(name) {
+		this.data = data
+		if (data == null) throw IllegalArgumentException("Empty string not allowed")
+	}
 
-    public StringTag(String name) {
-        super(name);
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		dos.writeUTF(data)
+	}
 
-    public StringTag(String name, String data) {
-        super(name);
-        this.data = data;
-        if (data == null) throw new IllegalArgumentException("Empty string not allowed");
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		data = dis.readUTF()
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        dos.writeUTF(data);
-    }
+	@Override
+	override fun parseValue(): String? {
+		return data
+	}
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-        data = dis.readUTF();
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_String
 
-    @Override
-    public String parseValue() {
-        return this.data;
-    }
+	@Override
+	override fun toString(): String {
+		return "StringTag " + this.getName().toString() + " (data: " + data.toString() + ")"
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_String;
-    }
+	@Override
+	override fun copy(): Tag {
+		return StringTag(getName(), data)
+	}
 
-    @Override
-    public String toString() {
-        return "StringTag " + this.getName() + " (data: " + data + ")";
-    }
-
-    @Override
-    public Tag copy() {
-        return new StringTag(getName(), data);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            StringTag o = (StringTag) obj;
-            return ((data == null && o.data == null) || (data != null && data.equals(o.data)));
-        }
-        return false;
-    }
-
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val o = obj as StringTag
+			return data == null && o.data == null || data != null && data!!.equals(o.data)
+		}
+		return false
+	}
 }

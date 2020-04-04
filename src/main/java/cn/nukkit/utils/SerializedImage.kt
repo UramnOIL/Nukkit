@@ -1,37 +1,25 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import lombok.ToString;
+import cn.nukkit.entity.data.Skin
+import lombok.ToString
+import java.util.*
 
-import java.util.Objects;
+@ToString(exclude = ["data"])
+class SerializedImage(val width: Int, val height: Int, val data: ByteArray) {
 
-import static cn.nukkit.entity.data.Skin.*;
+	companion object {
+		val EMPTY = SerializedImage(0, 0, ByteArray(0))
+		@JvmStatic
+		fun fromLegacy(skinData: ByteArray): SerializedImage {
+			Objects.requireNonNull(skinData, "skinData")
+			when (skinData.size) {
+				Skin.SINGLE_SKIN_SIZE -> return SerializedImage(64, 32, skinData)
+				Skin.DOUBLE_SKIN_SIZE -> return SerializedImage(64, 64, skinData)
+				Skin.SKIN_128_64_SIZE -> return SerializedImage(128, 64, skinData)
+				Skin.SKIN_128_128_SIZE -> return SerializedImage(128, 128, skinData)
+			}
+			throw IllegalArgumentException("Unknown legacy skin size")
+		}
+	}
 
-@ToString(exclude = {"data"})
-public class SerializedImage {
-    public static final SerializedImage EMPTY = new SerializedImage(0, 0, new byte[0]);
-
-    public final int width;
-    public final int height;
-    public final byte[] data;
-
-    public SerializedImage(int width, int height, byte[] data) {
-        this.width = width;
-        this.height = height;
-        this.data = data;
-    }
-
-    public static SerializedImage fromLegacy(byte[] skinData) {
-        Objects.requireNonNull(skinData, "skinData");
-        switch (skinData.length) {
-            case SINGLE_SKIN_SIZE:
-                return new SerializedImage(64, 32, skinData);
-            case DOUBLE_SKIN_SIZE:
-                return new SerializedImage(64, 64, skinData);
-            case SKIN_128_64_SIZE:
-                return new SerializedImage(128, 64, skinData);
-            case SKIN_128_128_SIZE:
-                return new SerializedImage(128, 128, skinData);
-        }
-        throw new IllegalArgumentException("Unknown legacy skin size");
-    }
 }

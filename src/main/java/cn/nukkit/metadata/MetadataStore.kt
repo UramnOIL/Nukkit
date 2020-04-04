@@ -1,70 +1,62 @@
-package cn.nukkit.metadata;
+package cn.nukkit.metadata
 
-import cn.nukkit.plugin.Plugin;
-import cn.nukkit.utils.PluginException;
-import cn.nukkit.utils.ServerException;
-
-import java.util.*;
+import cn.nukkit.plugin.Plugin
+import cn.nukkit.utils.PluginException
+import cn.nukkit.utils.ServerException
+import java.util.*
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public abstract class MetadataStore {
+abstract class MetadataStore {
+	private val metadataMap: Map<String?, Map<Plugin?, MetadataValue?>?>? = HashMap()
+	fun setMetadata(subject: Object?, metadataKey: String?, newMetadataValue: MetadataValue?) {
+		if (newMetadataValue == null) {
+			throw ServerException("Value cannot be null")
+		}
+		val owningPlugin: Plugin = newMetadataValue.getOwningPlugin() ?: throw PluginException("Plugin cannot be null")
+		val key = disambiguate(subject as Metadatable?, metadataKey)
+		val entry: Map<Plugin?, MetadataValue?> = metadataMap.computeIfAbsent(key) { k -> WeakHashMap(1) }
+		entry.put(owningPlugin, newMetadataValue)
+	}
 
-    private final Map<String, Map<Plugin, MetadataValue>> metadataMap = new HashMap<>();
+	fun getMetadata(subject: Object?, metadataKey: String?): List<MetadataValue?>? {
+		val key = disambiguate(subject as Metadatable?, metadataKey)
+		if (metadataMap!!.containsKey(key)) {
+			val values: Collection = metadataMap[key]!!.values()
+			return Collections.unmodifiableList(ArrayList(values))
+		}
+		return Collections.emptyList()
+	}
 
-    public void setMetadata(Object subject, String metadataKey, MetadataValue newMetadataValue) {
-        if (newMetadataValue == null) {
-            throw new ServerException("Value cannot be null");
-        }
-        Plugin owningPlugin = newMetadataValue.getOwningPlugin();
-        if (owningPlugin == null) {
-            throw new PluginException("Plugin cannot be null");
-        }
-        String key = this.disambiguate((Metadatable) subject, metadataKey);
-        Map<Plugin, MetadataValue> entry = this.metadataMap.computeIfAbsent(key, k -> new WeakHashMap<>(1));
-        entry.put(owningPlugin, newMetadataValue);
-    }
+	fun hasMetadata(subject: Object?, metadataKey: String?): Boolean {
+		return metadataMap!!.containsKey(disambiguate(subject as Metadatable?, metadataKey))
+	}
 
-    public List<MetadataValue> getMetadata(Object subject, String metadataKey) {
-        String key = this.disambiguate((Metadatable) subject, metadataKey);
-        if (this.metadataMap.containsKey(key)) {
-            Collection values = ((Map) this.metadataMap.get(key)).values();
-            return Collections.unmodifiableList(new ArrayList<>(values));
-        }
-        return Collections.emptyList();
-    }
+	fun removeMetadata(subject: Object?, metadataKey: String?, owningPlugin: Plugin?) {
+		if (owningPlugin == null) {
+			throw PluginException("Plugin cannot be null")
+		}
+		val key = disambiguate(subject as Metadatable?, metadataKey)
+		val entry: Map<Any?, Any?> = metadataMap!![key] ?: return
+		entry.remove(owningPlugin)
+		if (entry.isEmpty()) {
+			metadataMap.remove(key)
+		}
+	}
 
-    public boolean hasMetadata(Object subject, String metadataKey) {
-        return this.metadataMap.containsKey(this.disambiguate((Metadatable) subject, metadataKey));
-    }
+	fun invalidateAll(owningPlugin: Plugin?) {
+		if (owningPlugin == null) {
+			throw PluginException("Plugin cannot be null")
+		}
+		for (value in metadataMap!!.values()) {
+			if (value.containsKey(owningPlugin)) {
+				(value.get(owningPlugin) as MetadataValue)!!.invalidate()
+			}
+		}
+	}
 
-    public void removeMetadata(Object subject, String metadataKey, Plugin owningPlugin) {
-        if (owningPlugin == null) {
-            throw new PluginException("Plugin cannot be null");
-        }
-        String key = this.disambiguate((Metadatable) subject, metadataKey);
-        Map entry = this.metadataMap.get(key);
-        if (entry == null) {
-            return;
-        }
-        entry.remove(owningPlugin);
-        if (entry.isEmpty()) {
-            this.metadataMap.remove(key);
-        }
-    }
-
-    public void invalidateAll(Plugin owningPlugin) {
-        if (owningPlugin == null) {
-            throw new PluginException("Plugin cannot be null");
-        }
-        for (Map value : this.metadataMap.values()) {
-            if (value.containsKey(owningPlugin)) {
-                ((MetadataValue) value.get(owningPlugin)).invalidate();
-            }
-        }
-    }
-
-    protected abstract String disambiguate(Metadatable subject, String metadataKey);
+	protected abstract fun disambiguate(subject: Metadatable?, metadataKey: String?): String?
 }

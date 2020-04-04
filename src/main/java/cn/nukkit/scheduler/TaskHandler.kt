@@ -1,122 +1,54 @@
-package cn.nukkit.scheduler;
+package cn.nukkit.scheduler
 
-import cn.nukkit.Server;
-import cn.nukkit.plugin.Plugin;
-import co.aikar.timings.Timing;
-import co.aikar.timings.Timings;
+import cn.nukkit.Server
+import cn.nukkit.plugin.Plugin
+import co.aikar.timings.Timing
+import co.aikar.timings.Timings
 
 /**
  * @author MagicDroidX
  */
-public class TaskHandler {
-    private final int taskId;
-    private final boolean asynchronous;
+class TaskHandler(val plugin: Plugin?, val task: Runnable, val taskId: Int, val isAsynchronous: Boolean) {
+	var delay = 0
+	var period = 0
+	var lastRunTick = 0
+	var nextRunTick = 0
+	var isCancelled = false
+		private set
+	val timing: Timing
 
-    private final Plugin plugin;
-    private final Runnable task;
+	val isDelayed: Boolean
+		get() = delay > 0
 
-    private int delay;
-    private int period;
+	val isRepeating: Boolean
+		get() = period > 0
 
-    private int lastRunTick;
-    private int nextRunTick;
+	fun cancel() {
+		if (!isCancelled && task is Task) {
+			task.onCancel()
+		}
+		isCancelled = true
+	}
 
-    private boolean cancelled;
+	@Deprecated("")
+	fun remove() {
+		isCancelled = true
+	}
 
-    public final Timing timing;
+	fun run(currentTick: Int) {
+		try {
+			lastRunTick = currentTick
+			task.run()
+		} catch (ex: RuntimeException) {
+			Server.instance.logger.critical("Exception while invoking run", ex)
+		}
+	}
 
-    public TaskHandler(Plugin plugin, Runnable task, int taskId, boolean asynchronous) {
-        this.asynchronous = asynchronous;
-        this.plugin = plugin;
-        this.task = task;
-        this.taskId = taskId;
-        this.timing = Timings.getTaskTiming(this, period);
-    }
+	@get:Deprecated("")
+	val taskName: String
+		get() = "Unknown"
 
-    public boolean isCancelled() {
-        return this.cancelled;
-    }
-
-    public int getNextRunTick() {
-        return this.nextRunTick;
-    }
-
-    public void setNextRunTick(int nextRunTick) {
-        this.nextRunTick = nextRunTick;
-    }
-
-    public int getTaskId() {
-        return this.taskId;
-    }
-
-    public Runnable getTask() {
-        return this.task;
-    }
-
-    public int getDelay() {
-        return this.delay;
-    }
-
-    public boolean isDelayed() {
-        return this.delay > 0;
-    }
-
-    public boolean isRepeating() {
-        return this.period > 0;
-    }
-
-    public int getPeriod() {
-        return this.period;
-    }
-
-    public Plugin getPlugin() {
-        return plugin;
-    }
-
-    public int getLastRunTick() {
-        return lastRunTick;
-    }
-
-    public void setLastRunTick(int lastRunTick) {
-        this.lastRunTick = lastRunTick;
-    }
-
-    public void cancel() {
-        if (!this.isCancelled() && this.task instanceof Task) {
-            ((Task) this.task).onCancel();
-        }
-        this.cancelled = true;
-    }
-
-    @Deprecated
-    public void remove() {
-        this.cancelled = true;
-    }
-
-    public void run(int currentTick) {
-        try {
-            setLastRunTick(currentTick);
-            getTask().run();
-        } catch (RuntimeException ex) {
-            Server.getInstance().getLogger().critical("Exception while invoking run", ex);
-        }
-    }
-
-    @Deprecated
-    public String getTaskName() {
-        return "Unknown";
-    }
-
-    public boolean isAsynchronous() {
-        return asynchronous;
-    }
-
-    public void setDelay(int delay) {
-        this.delay = delay;
-    }
-
-    public void setPeriod(int period) {
-        this.period = period;
-    }
-
+	init {
+		timing = Timings.getTaskTiming(this, period.toLong())
+	}
 }

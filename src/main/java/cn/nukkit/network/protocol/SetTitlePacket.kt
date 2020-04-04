@@ -1,48 +1,53 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author Tee7even
  */
 @ToString
-public class SetTitlePacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.SET_TITLE_PACKET;
+class SetTitlePacket : DataPacket() {
+	var type = 0
+	var text: String? = ""
+	var fadeInTime = 0
+	var stayTime = 0
+	var fadeOutTime = 0
 
-    public static final int TYPE_CLEAR = 0;
-    public static final int TYPE_RESET = 1;
-    public static final int TYPE_TITLE = 2;
-    public static final int TYPE_SUBTITLE = 3;
-    public static final int TYPE_ACTION_BAR = 4;
-    public static final int TYPE_ANIMATION_TIMES = 5;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public int type;
-    public String text = "";
-    public int fadeInTime = 0;
-    public int stayTime = 0;
-    public int fadeOutTime = 0;
+	@Override
+	override fun decode() {
+		type = this.getVarInt()
+		text = this.getString()
+		fadeInTime = this.getVarInt()
+		stayTime = this.getVarInt()
+		fadeOutTime = this.getVarInt()
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarInt(type)
+		this.putString(text)
+		this.putVarInt(fadeInTime)
+		this.putVarInt(stayTime)
+		this.putVarInt(fadeOutTime)
+	}
 
-    @Override
-    public void decode() {
-        this.type = this.getVarInt();
-        this.text = this.getString();
-        this.fadeInTime = this.getVarInt();
-        this.stayTime = this.getVarInt();
-        this.fadeOutTime = this.getVarInt();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarInt(type);
-        this.putString(text);
-        this.putVarInt(fadeInTime);
-        this.putVarInt(stayTime);
-        this.putVarInt(fadeOutTime);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SET_TITLE_PACKET
+		const val TYPE_CLEAR = 0
+		const val TYPE_RESET = 1
+		const val TYPE_TITLE = 2
+		const val TYPE_SUBTITLE = 3
+		const val TYPE_ACTION_BAR = 4
+		const val TYPE_ANIMATION_TIMES = 5
+	}
 }

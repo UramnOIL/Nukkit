@@ -1,156 +1,142 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import java.io.PrintStream
+import java.util.ArrayList
+import java.util.Collection
+import java.util.List
+import java.util.StringJoiner
+import kotlin.jvm.Throws
 
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.StringJoiner;
+class ListTag<T : Tag?> : Tag {
+	private var list: List<T> = ArrayList()
+	var type: Byte = 0
 
-public class ListTag<T extends Tag> extends Tag {
+	constructor() : super("") {}
+	constructor(name: String?) : super(name) {}
 
-    private List<T> list = new ArrayList<>();
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		if (list.size() > 0) type = list[0].getId() else type = 1
+		dos.writeByte(type)
+		dos.writeInt(list.size())
+		for (aList in list) aList!!.write(dos)
+	}
 
-    public byte type;
+	@Override
+	@SuppressWarnings("unchecked")
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		type = dis.readByte()
+		val size: Int = dis.readInt()
+		list = ArrayList(size)
+		for (i in 0 until size) {
+			val tag: Tag = Tag.newTag(type, null)
+			tag.load(dis)
+			tag.setName("")
+			list.add(tag as T)
+		}
+	}
 
-    public ListTag() {
-        super("");
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_List
 
-    public ListTag(String name) {
-        super(name);
-    }
+	@Override
+	override fun toString(): String {
+		val joiner = StringJoiner(",\n\t")
+		list.forEach { tag -> joiner.add(tag.toString().replace("\n", "\n\t")) }
+		return """ListTag '${this.getName().toString()}' (${list.size().toString()} entries of type ${Tag.getTagName(type).toString()}) {
+	${joiner.toString().toString()}
+}"""
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        if (list.size() > 0) type = list.get(0).getId();
-        else type = 1;
+	fun print(prefix: String, out: PrintStream) {
+		var prefix = prefix
+		super.print(prefix, out)
+		out.println("$prefix{")
+		val orgPrefix = prefix
+		prefix += "   "
+		for (aList in list) aList!!.print(prefix, out)
+		out.println("$orgPrefix}")
+	}
 
-        dos.writeByte(type);
-        dos.writeInt(list.size());
-        for (T aList : list) aList.write(dos);
-    }
+	fun add(tag: T): ListTag<T> {
+		type = tag.getId()
+		tag!!.setName("")
+		list.add(tag)
+		return this
+	}
 
-    @Override
-    @SuppressWarnings("unchecked")
-    void load(NBTInputStream dis) throws IOException {
-        type = dis.readByte();
-        int size = dis.readInt();
+	fun add(index: Int, tag: T): ListTag<T> {
+		type = tag.getId()
+		tag!!.setName("")
+		if (index >= list.size()) {
+			list.add(index, tag)
+		} else {
+			list.set(index, tag)
+		}
+		return this
+	}
 
-        list = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            Tag tag = Tag.newTag(type, null);
-            tag.load(dis);
-            tag.setName("");
-            list.add((T) tag);
-        }
-    }
+	@Override
+	override fun parseValue(): List<Object> {
+		val value: List<Object> = ArrayList(list.size())
+		for (t in list) {
+			value.add(t!!.parseValue())
+		}
+		return value
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_List;
-    }
+	operator fun get(index: Int): T {
+		return list[index]
+	}
 
-    @Override
-    public String toString() {
-        StringJoiner joiner = new StringJoiner(",\n\t");
-        list.forEach(tag -> joiner.add(tag.toString().replace("\n", "\n\t")));
-        return "ListTag '" + this.getName() + "' (" + list.size() + " entries of type " + Tag.getTagName(type) + ") {\n\t" + joiner.toString() + "\n}";
-    }
+	var all: List<T>?
+		get() = ArrayList(list)
+		set(tags) {
+			list = ArrayList(tags)
+		}
 
-    public void print(String prefix, PrintStream out) {
-        super.print(prefix, out);
+	fun remove(tag: T) {
+		list.remove(tag)
+	}
 
-        out.println(prefix + "{");
-        String orgPrefix = prefix;
-        prefix += "   ";
-        for (T aList : list) aList.print(prefix, out);
-        out.println(orgPrefix + "}");
-    }
+	fun remove(index: Int) {
+		list.remove(index)
+	}
 
-    public ListTag<T> add(T tag) {
-        type = tag.getId();
-        tag.setName("");
-        list.add(tag);
-        return this;
-    }
+	fun removeAll(tags: Collection<T>?) {
+		list.remove(tags)
+	}
 
-    public ListTag<T> add(int index, T tag) {
-        type = tag.getId();
-        tag.setName("");
+	fun size(): Int {
+		return list.size()
+	}
 
-        if (index >= list.size()) {
-            list.add(index, tag);
-        } else {
-            list.set(index, tag);
-        }
-        return this;
-    }
+	@Override
+	override fun copy(): Tag {
+		val res = ListTag<T>(getName())
+		res.type = type
+		for (t in list) {
+			@SuppressWarnings("unchecked") val copy = t!!.copy() as T
+			res.list.add(copy)
+		}
+		return res
+	}
 
-    @Override
-    public List<Object> parseValue() {
-        List<Object> value = new ArrayList<>(this.list.size());
-
-        for (T t : this.list) {
-            value.add(t.parseValue());
-        }
-
-        return value;
-    }
-
-    public T get(int index) {
-        return list.get(index);
-    }
-
-    public List<T> getAll() {
-        return new ArrayList<>(list);
-    }
-
-    public void setAll(List<T> tags) {
-        this.list = new ArrayList<>(tags);
-    }
-
-    public void remove(T tag) {
-        list.remove(tag);
-    }
-
-    public void remove(int index) {
-        list.remove(index);
-    }
-
-    public void removeAll(Collection<T> tags) {
-        list.remove(tags);
-    }
-
-    public int size() {
-        return list.size();
-    }
-
-    @Override
-    public Tag copy() {
-        ListTag<T> res = new ListTag<>(getName());
-        res.type = type;
-        for (T t : list) {
-            @SuppressWarnings("unchecked")
-            T copy = (T) t.copy();
-            res.list.add(copy);
-        }
-        return res;
-    }
-
-    @SuppressWarnings("rawtypes")
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            ListTag o = (ListTag) obj;
-            if (type == o.type) {
-                return list.equals(o.list);
-            }
-        }
-        return false;
-    }
-
+	@SuppressWarnings("rawtypes")
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val o = obj as ListTag<*>
+			if (type == o.type) {
+				return list.equals(o.list)
+			}
+		}
+		return false
+	}
 }

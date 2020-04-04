@@ -1,42 +1,44 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author Nukkit Project Team
  */
 @ToString
-public class AddPaintingPacket extends DataPacket {
+class AddPaintingPacket : DataPacket() {
+	var entityUniqueId: Long = 0
+	var entityRuntimeId: Long = 0
+	var x = 0f
+	var y = 0f
+	var z = 0f
+	var direction = 0
+	var title: String? = null
 
-    public static final byte NETWORK_ID = ProtocolInfo.ADD_PAINTING_PACKET;
+	@Override
+	override fun decode() {
+	}
 
-    public long entityUniqueId;
-    public long entityRuntimeId;
-    public float x;
-    public float y;
-    public float z;
-    public int direction;
-    public String title;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityUniqueId(entityUniqueId)
+		this.putEntityRuntimeId(entityRuntimeId)
+		this.putVector3f(x, y, z)
+		this.putVarInt(direction)
+		this.putString(title)
+	}
 
-    @Override
-    public void decode() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityUniqueId(this.entityUniqueId);
-        this.putEntityRuntimeId(this.entityRuntimeId);
-
-        this.putVector3f(this.x, this.y, this.z);
-        this.putVarInt(this.direction);
-        this.putString(this.title);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.ADD_PAINTING_PACKET
+	}
 }

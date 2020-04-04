@@ -1,513 +1,449 @@
-package cn.nukkit.raknet.server;
+package cn.nukkit.raknet.server
 
-import cn.nukkit.raknet.RakNet;
-import cn.nukkit.raknet.protocol.EncapsulatedPacket;
-import cn.nukkit.raknet.protocol.Packet;
-import cn.nukkit.raknet.protocol.packet.*;
-import cn.nukkit.utils.Binary;
-import cn.nukkit.utils.ThreadedLogger;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.socket.DatagramPacket;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import cn.nukkit.raknet.RakNet
+import cn.nukkit.raknet.protocol.EncapsulatedPacket
+import cn.nukkit.raknet.protocol.Packet
+import cn.nukkit.raknet.protocol.Packet.PacketFactory
+import cn.nukkit.raknet.protocol.packet.*
+import cn.nukkit.utils.Binary
+import cn.nukkit.utils.ThreadedLogger
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
+import java.util.*
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class SessionManager {
-    protected final Packet.PacketFactory[] packetPool = new Packet.PacketFactory[256];
-
-    protected final RakNetServer server;
-
-    protected final UDPServerSocket socket;
-
-    protected int receiveBytes = 0;
-    protected int sendBytes = 0;
-
-    protected final Map<String, Session> sessions = new HashMap<>();
-
-    protected String name = "";
-
-    protected int packetLimit = 1000;
-
-    protected boolean shutdown = false;
-
-    protected long ticks = 0;
-    protected long lastMeasure;
-
-    protected final Map<String, Long> block = new HashMap<>();
-    protected final Map<String, Integer> ipSec = new HashMap<>();
-
-    public boolean portChecking = true;
-
-    public final long serverId;
-
-    protected String currentSource = "";
-
-    public SessionManager(RakNetServer server, UDPServerSocket socket) throws Exception {
-        this.server = server;
-        this.socket = socket;
-        this.registerPackets();
-
-        this.serverId = new Random().nextLong();
-
-        this.run();
-    }
-
-    public int getPort() {
-        return this.server.port;
-    }
-
-    public ThreadedLogger getLogger() {
-        return this.server.getLogger();
-    }
-
-    public void run() throws Exception {
-        this.tickProcessor();
-    }
-
-    private void tickProcessor() throws Exception {
-        this.lastMeasure = System.currentTimeMillis();
-        while (!this.shutdown) {
-            long start = System.currentTimeMillis();
-            int max = 5000;
-            while (max > 0) {
-                try {
-                    if (!this.receivePacket()) {
-                        break;
-                    }
-                    --max;
-                } catch (Exception e) {
-                    if (!currentSource.isEmpty()) {
-                        this.blockAddress(currentSource);
-                    }
-                    // else ignore
-                }
-            }
-            while (this.receiveStream()) ;
-
-            long time = System.currentTimeMillis() - start;
-            if (time < 50) {
-                try {
-                    Thread.sleep(50 - time);
-                } catch (InterruptedException e) {
-                    //ignore
-                }
-            }
-            this.tick();
-        }
-    }
-
-    private void tick() throws Exception {
-        long time = System.currentTimeMillis();
-        for (Session session : new ArrayList<>(this.sessions.values())) {
-            session.update(time);
-        }
-
-        for (String address : this.ipSec.keySet()) {
-            int count = this.ipSec.get(address);
-            if (count >= this.packetLimit) {
-                this.blockAddress(address);
-            }
-        }
-        this.ipSec.clear();
-
-        if ((this.ticks & 0b1111) == 0) {
-            double diff = Math.max(5d, (double) time - this.lastMeasure);
-            this.streamOption("bandwidth", this.sendBytes / diff + ";" + this.receiveBytes / diff);
-            this.lastMeasure = time;
-            this.sendBytes = 0;
-            this.receiveBytes = 0;
-
-            if (!this.block.isEmpty()) {
-                long now = System.currentTimeMillis();
-                for (String address : new ArrayList<>(this.block.keySet())) {
-                    long timeout = this.block.get(address);
-                    if (timeout <= now) {
-                        this.block.remove(address);
-                        this.getLogger().notice("Unblocked " + address);
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-
-        ++this.ticks;
-    }
-
-    private boolean receivePacket() throws Exception {
-        DatagramPacket datagramPacket = this.socket.readPacket();
-        if (datagramPacket != null) {
-            // Check this early
-            try {
-                String source = datagramPacket.sender().getHostString();
-                currentSource = source; //in order to block address
-                if (this.block.containsKey(source)) {
-                    return true;
-                }
-
-                if (this.ipSec.containsKey(source)) {
-                    this.ipSec.put(source, this.ipSec.get(source) + 1);
-                } else {
-                    this.ipSec.put(source, 1);
-                }
-
-                ByteBuf byteBuf = datagramPacket.content();
-                if (byteBuf.readableBytes() == 0) {
-                    // Exit early to process another packet
-                    return true;
-                }
-                byte[] buffer = new byte[byteBuf.readableBytes()];
-                byteBuf.readBytes(buffer);
-                int len = buffer.length;
-                int port = datagramPacket.sender().getPort();
-
-                this.receiveBytes += len;
-
-                byte pid = buffer[0];
-
-                if (pid == UNCONNECTED_PONG.ID) {
-                    return false;
-                }
-
-                Packet packet = this.getPacketFromPool(pid);
-                if (packet != null) {
-                    packet.buffer = buffer;
-                    this.getSession(source, port).handlePacket(packet);
-                    return true;
-                } else if (pid == UNCONNECTED_PING.ID) {
-                    packet = new UNCONNECTED_PING();
-                    packet.buffer = buffer;
-                    packet.decode();
-
-                    UNCONNECTED_PONG pk = new UNCONNECTED_PONG();
-                    pk.serverID = this.getID();
-                    pk.pingID = ((UNCONNECTED_PING) packet).pingID;
-                    pk.serverName = this.getName();
-                    this.sendPacket(pk, source, port);
-                } else if (buffer.length != 0) {
-                    this.streamRAW(source, port, buffer);
-                    return true;
-                } else {
-                    return false;
-                }
-            } finally {
-                datagramPacket.release();
-            }
-        }
-
-        return false;
-    }
-
-    public void sendPacket(Packet packet, String dest, int port) throws IOException {
-        packet.encode();
-        this.sendBytes += this.socket.writePacket(packet.buffer, dest, port);
-    }
-
-    public void sendPacket(Packet packet, InetSocketAddress dest) throws IOException {
-        packet.encode();
-        this.sendBytes += this.socket.writePacket(packet.buffer, dest);
-    }
-
-    public void streamEncapsulated(Session session, EncapsulatedPacket packet) {
-        this.streamEncapsulated(session, packet, RakNet.PRIORITY_NORMAL);
-    }
-
-    public void streamEncapsulated(Session session, EncapsulatedPacket packet, int flags) {
-        String id = session.getAddress() + ":" + session.getPort();
-        byte[] buffer = Binary.appendBytes(
-                RakNet.PACKET_ENCAPSULATED,
-                new byte[]{(byte) (id.length() & 0xff)},
-                id.getBytes(StandardCharsets.UTF_8),
-                new byte[]{(byte) (flags & 0xff)},
-                packet.toBinary(true)
-        );
-        this.server.pushThreadToMainPacket(buffer);
-    }
-
-    public void streamRAW(String address, int port, byte[] payload) {
-        byte[] buffer = Binary.appendBytes(
-                RakNet.PACKET_RAW,
-                new byte[]{(byte) (address.length() & 0xff)},
-                address.getBytes(StandardCharsets.UTF_8),
-                Binary.writeShort(port),
-                payload
-        );
-        this.server.pushThreadToMainPacket(buffer);
-    }
-
-    protected void streamClose(String identifier, String reason) {
-        byte[] buffer = Binary.appendBytes(
-                RakNet.PACKET_CLOSE_SESSION,
-                new byte[]{(byte) (identifier.length() & 0xff)},
-                identifier.getBytes(StandardCharsets.UTF_8),
-                new byte[]{(byte) (reason.length() & 0xff)},
-                reason.getBytes(StandardCharsets.UTF_8)
-        );
-        this.server.pushThreadToMainPacket(buffer);
-    }
-
-    protected void streamInvalid(String identifier) {
-        byte[] buffer = Binary.appendBytes(
-                RakNet.PACKET_INVALID_SESSION,
-                new byte[]{(byte) (identifier.length() & 0xff)},
-                identifier.getBytes(StandardCharsets.UTF_8)
-        );
-        this.server.pushThreadToMainPacket(buffer);
-    }
-
-    protected void streamOpen(Session session) {
-        String identifier = session.getAddress() + ":" + session.getPort();
-        byte[] buffer = Binary.appendBytes(
-                RakNet.PACKET_OPEN_SESSION,
-                new byte[]{(byte) (identifier.length() & 0xff)},
-                identifier.getBytes(StandardCharsets.UTF_8),
-                new byte[]{(byte) (session.getAddress().length() & 0xff)},
-                session.getAddress().getBytes(StandardCharsets.UTF_8),
-                Binary.writeShort(session.getPort()),
-                Binary.writeLong(session.getID())
-        );
-        this.server.pushThreadToMainPacket(buffer);
-    }
-
-    protected void streamACK(String identifier, int identifierACK) {
-        byte[] buffer = Binary.appendBytes(
-                RakNet.PACKET_ACK_NOTIFICATION,
-                new byte[]{(byte) (identifier.length() & 0xff)},
-                identifier.getBytes(StandardCharsets.UTF_8),
-                Binary.writeInt(identifierACK)
-        );
-        this.server.pushThreadToMainPacket(buffer);
-    }
-
-    protected void streamOption(String name, String value) {
-        byte[] buffer = Binary.appendBytes(
-                RakNet.PACKET_SET_OPTION,
-                new byte[]{(byte) (name.length() & 0xff)},
-                name.getBytes(StandardCharsets.UTF_8),
-                value.getBytes(StandardCharsets.UTF_8)
-        );
-        this.server.pushThreadToMainPacket(buffer);
-    }
-
-    private void checkSessions() {
-        int size = this.sessions.size();
-        if (size > 4096) {
-            List<String> keyToRemove = new ArrayList<>();
-            for (String i : this.sessions.keySet()) {
-                Session s = this.sessions.get(i);
-                if (s.isTemporal()) {
-                    keyToRemove.add(i);
-                    size--;
-                    if (size <= 4096) {
-                        break;
-                    }
-                }
-            }
-
-            for (String i : keyToRemove) {
-                this.sessions.remove(i);
-            }
-        }
-    }
-
-    public boolean receiveStream() throws Exception {
-        byte[] packet = this.server.readMainToThreadPacket();
-        if (packet != null && packet.length > 0) {
-            byte id = packet[0];
-            int offset = 1;
-            switch (id) {
-                case RakNet.PACKET_ENCAPSULATED:
-                    int len = packet[offset++];
-                    String identifier = new String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8);
-                    offset += len;
-                    if (this.sessions.containsKey(identifier)) {
-                        byte flags = packet[offset++];
-                        byte[] buffer = Binary.subBytes(packet, offset);
-                        this.sessions.get(identifier).addEncapsulatedToQueue(EncapsulatedPacket.fromBinary(buffer, true), flags);
-                    } else {
-                        this.streamInvalid(identifier);
-                    }
-                    break;
-                case RakNet.PACKET_RAW:
-                    len = packet[offset++];
-                    String address = new String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8);
-                    offset += len;
-                    int port = Binary.readShort(Binary.subBytes(packet, offset, 2));
-                    offset += 2;
-                    byte[] payload = Binary.subBytes(packet, offset);
-                    this.socket.writePacket(payload, address, port);
-                    break;
-                case RakNet.PACKET_CLOSE_SESSION:
-                    len = packet[offset++];
-                    identifier = new String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8);
-                    if (this.sessions.containsKey(identifier)) {
-                        this.removeSession(this.sessions.get(identifier));
-                    } else {
-                        this.streamInvalid(identifier);
-                    }
-                    break;
-                case RakNet.PACKET_INVALID_SESSION:
-                    len = packet[offset++];
-                    identifier = new String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8);
-                    if (this.sessions.containsKey(identifier)) {
-                        this.removeSession(this.sessions.get(identifier));
-                    }
-                    break;
-                case RakNet.PACKET_SET_OPTION:
-                    len = packet[offset++];
-                    String name = new String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8);
-                    offset += len;
-                    String value = new String(Binary.subBytes(packet, offset), StandardCharsets.UTF_8);
-                    switch (name) {
-                        case "name":
-                            this.name = value;
-                            break;
-                        case "portChecking":
-                            this.portChecking = Boolean.valueOf(value);
-                            break;
-                        case "packetLimit":
-                            this.packetLimit = Integer.valueOf(value);
-                            break;
-                    }
-                    break;
-                case RakNet.PACKET_BLOCK_ADDRESS:
-                    len = packet[offset++];
-                    address = new String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8);
-                    offset += len;
-                    int timeout = Binary.readInt(Binary.subBytes(packet, offset, 4));
-                    this.blockAddress(address, timeout);
-                    break;
-                case RakNet.PACKET_UNBLOCK_ADDRESS:
-                    len = packet[offset++];
-                    address = new String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8);
-                    this.unblockAddress(address);
-                    break;
-                case RakNet.PACKET_SHUTDOWN:
-                    for (Session session : new ArrayList<>(this.sessions.values())) {
-                        this.removeSession(session);
-                    }
-
-                    this.socket.close();
-                    this.shutdown = true;
-                    break;
-                case RakNet.PACKET_EMERGENCY_SHUTDOWN:
-                    this.shutdown = true;
-                default:
-                    return false;
-            }
-            return true;
-        }
-
-        return false;
-    }
-
-    public void blockAddress(String address) {
-        this.blockAddress(address, 300);
-    }
-
-    public void blockAddress(String address, int timeout) {
-        long finalTime = System.currentTimeMillis() + timeout * 1000;
-        if (!this.block.containsKey(address) || timeout == -1) {
-            if (timeout == -1) {
-                finalTime = Long.MAX_VALUE;
-            } else {
-                this.getLogger().notice("Blocked " + address + " for " + timeout + " seconds");
-            }
-            this.block.put(address, finalTime);
-        } else if (this.block.get(address) < finalTime) {
-            this.block.put(address, finalTime);
-        }
-    }
-
-    public void unblockAddress(String address) {
-        this.block.remove(address);
-    }
-
-    public Session getSession(String ip, int port) {
-        String id = ip + ":" + port;
-        if (!this.sessions.containsKey(id)) {
-            this.checkSessions();
-            Session session = new Session(this, ip, port);
-            this.sessions.put(id, session);
-
-            return session;
-        }
-
-        return this.sessions.get(id);
-    }
-
-    public void removeSession(Session session) throws Exception {
-        this.removeSession(session, "unknown");
-    }
-
-    public void removeSession(Session session, String reason) throws Exception {
-        String id = session.getAddress() + ":" + session.getPort();
-        if (this.sessions.containsKey(id)) {
-            this.sessions.get(id).close();
-            this.sessions.remove(id);
-            this.streamClose(id, reason);
-        }
-    }
-
-    public void openSession(Session session) {
-        this.streamOpen(session);
-    }
-
-    public void notifyACK(Session session, int identifierACK) {
-        this.streamACK(session.getAddress() + ":" + session.getPort(), identifierACK);
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public long getID() {
-        return this.serverId;
-    }
-
-    private void registerPacket(byte id, Packet.PacketFactory factory) {
-        this.packetPool[id & 0xFF] = factory;
-    }
-
-    public Packet getPacketFromPool(byte id) {
-        return this.packetPool[id & 0xFF].create();
-    }
-
-    private void registerPackets() {
-        // fill with dummy returning null
-        Arrays.fill(this.packetPool, (Packet.PacketFactory) () -> null);
-
-        //this.registerPacket(UNCONNECTED_PING.ID, UNCONNECTED_PING.class);
-        this.registerPacket(UNCONNECTED_PING_OPEN_CONNECTIONS.ID, new UNCONNECTED_PING_OPEN_CONNECTIONS.Factory());
-        this.registerPacket(OPEN_CONNECTION_REQUEST_1.ID, new OPEN_CONNECTION_REQUEST_1.Factory());
-        this.registerPacket(OPEN_CONNECTION_REPLY_1.ID, new OPEN_CONNECTION_REPLY_1.Factory());
-        this.registerPacket(OPEN_CONNECTION_REQUEST_2.ID, new OPEN_CONNECTION_REQUEST_2.Factory());
-        this.registerPacket(OPEN_CONNECTION_REPLY_2.ID, new OPEN_CONNECTION_REPLY_2.Factory());
-        this.registerPacket(UNCONNECTED_PONG.ID, new UNCONNECTED_PONG.Factory());
-        this.registerPacket(ADVERTISE_SYSTEM.ID, new ADVERTISE_SYSTEM.Factory());
-        this.registerPacket(DATA_PACKET_0.ID, new DATA_PACKET_0.Factory());
-        this.registerPacket(DATA_PACKET_1.ID, new DATA_PACKET_1.Factory());
-        this.registerPacket(DATA_PACKET_2.ID, new DATA_PACKET_2.Factory());
-        this.registerPacket(DATA_PACKET_3.ID, new DATA_PACKET_3.Factory());
-        this.registerPacket(DATA_PACKET_4.ID, new DATA_PACKET_4.Factory());
-        this.registerPacket(DATA_PACKET_5.ID, new DATA_PACKET_5.Factory());
-        this.registerPacket(DATA_PACKET_6.ID, new DATA_PACKET_6.Factory());
-        this.registerPacket(DATA_PACKET_7.ID, new DATA_PACKET_7.Factory());
-        this.registerPacket(DATA_PACKET_8.ID, new DATA_PACKET_8.Factory());
-        this.registerPacket(DATA_PACKET_9.ID, new DATA_PACKET_9.Factory());
-        this.registerPacket(DATA_PACKET_A.ID, new DATA_PACKET_A.Factory());
-        this.registerPacket(DATA_PACKET_B.ID, new DATA_PACKET_B.Factory());
-        this.registerPacket(DATA_PACKET_C.ID, new DATA_PACKET_C.Factory());
-        this.registerPacket(DATA_PACKET_D.ID, new DATA_PACKET_D.Factory());
-        this.registerPacket(DATA_PACKET_E.ID, new DATA_PACKET_E.Factory());
-        this.registerPacket(DATA_PACKET_F.ID, new DATA_PACKET_F.Factory());
-        this.registerPacket(NACK.ID, new NACK.Factory());
-        this.registerPacket(ACK.ID, new ACK.Factory());
-    }
+class SessionManager(protected val server: RakNetServer, protected val socket: UDPServerSocket) {
+	protected val packetPool = arrayOfNulls<PacketFactory>(256)
+	protected var receiveBytes = 0
+	protected var sendBytes = 0
+	protected val sessions: MutableMap<String, Session> = HashMap()
+	var name = ""
+		protected set
+	protected var packetLimit = 1000
+	protected var shutdown = false
+	protected var ticks: Long = 0
+	protected var lastMeasure: Long = 0
+	protected val block: MutableMap<String, Long> = HashMap()
+	protected val ipSec: MutableMap<String, Int> = HashMap()
+	var portChecking = true
+	val iD: Long
+	protected var currentSource = ""
+	val port: Int
+		get() = server.port
+
+	val logger: ThreadedLogger?
+		get() = server.getLogger()
+
+	@Throws(Exception::class)
+	fun run() {
+		tickProcessor()
+	}
+
+	@Throws(Exception::class)
+	private fun tickProcessor() {
+		lastMeasure = System.currentTimeMillis()
+		while (!shutdown) {
+			val start = System.currentTimeMillis()
+			var max = 5000
+			while (max > 0) {
+				try {
+					if (!receivePacket()) {
+						break
+					}
+					--max
+				} catch (e: Exception) {
+					if (!currentSource.isEmpty()) {
+						blockAddress(currentSource)
+					}
+					// else ignore
+				}
+			}
+			while (receiveStream());
+			val time = System.currentTimeMillis() - start
+			if (time < 50) {
+				try {
+					Thread.sleep(50 - time)
+				} catch (e: InterruptedException) {
+					//ignore
+				}
+			}
+			tick()
+		}
+	}
+
+	@Throws(Exception::class)
+	private fun tick() {
+		val time = System.currentTimeMillis()
+		for (session in ArrayList(sessions.values)) {
+			session.update(time)
+		}
+		for (address in ipSec.keys) {
+			val count = ipSec[address]!!
+			if (count >= packetLimit) {
+				blockAddress(address)
+			}
+		}
+		ipSec.clear()
+		if (ticks and 15 == 0L) {
+			val diff = Math.max(5.0, time.toDouble() - lastMeasure)
+			streamOption("bandwidth", (sendBytes / diff).toString() + ";" + receiveBytes / diff)
+			lastMeasure = time
+			sendBytes = 0
+			receiveBytes = 0
+			if (!block.isEmpty()) {
+				val now = System.currentTimeMillis()
+				for (address in ArrayList(block.keys)) {
+					val timeout = block[address]!!
+					if (timeout <= now) {
+						block.remove(address)
+						logger!!.notice("Unblocked $address")
+					} else {
+						break
+					}
+				}
+			}
+		}
+		++ticks
+	}
+
+	@Throws(Exception::class)
+	private fun receivePacket(): Boolean {
+		val datagramPacket = socket.readPacket()
+		if (datagramPacket != null) {
+			// Check this early
+			try {
+				val source = datagramPacket.sender().hostString
+				currentSource = source //in order to block address
+				if (block.containsKey(source)) {
+					return true
+				}
+				if (ipSec.containsKey(source)) {
+					ipSec[source] = ipSec[source]!! + 1
+				} else {
+					ipSec[source] = 1
+				}
+				val byteBuf = datagramPacket.content()
+				if (byteBuf.readableBytes() == 0) {
+					// Exit early to process another packet
+					return true
+				}
+				val buffer = ByteArray(byteBuf.readableBytes())
+				byteBuf.readBytes(buffer)
+				val len = buffer.size
+				val port = datagramPacket.sender().port
+				receiveBytes += len
+				val pid = buffer[0]
+				if (pid == UNCONNECTED_PONG.Companion.ID) {
+					return false
+				}
+				var packet = getPacketFromPool(pid)
+				if (packet != null) {
+					packet.buffer = buffer
+					getSession(source, port)!!.handlePacket(packet)
+					return true
+				} else if (pid == UNCONNECTED_PING.Companion.ID) {
+					packet = UNCONNECTED_PING()
+					packet.buffer = buffer
+					packet.decode()
+					val pk = UNCONNECTED_PONG()
+					pk.serverID = iD
+					pk.pingID = packet.pingID
+					pk.serverName = name
+					this.sendPacket(pk, source, port)
+				} else if (buffer.size != 0) {
+					streamRAW(source, port, buffer)
+					return true
+				} else {
+					return false
+				}
+			} finally {
+				datagramPacket.release()
+			}
+		}
+		return false
+	}
+
+	@Throws(IOException::class)
+	fun sendPacket(packet: Packet?, dest: String?, port: Int) {
+		packet!!.encode()
+		sendBytes += socket.writePacket(packet.buffer, dest, port)
+	}
+
+	@Throws(IOException::class)
+	fun sendPacket(packet: Packet, dest: InetSocketAddress?) {
+		packet.encode()
+		sendBytes += socket.writePacket(packet.buffer, dest)
+	}
+
+	@JvmOverloads
+	fun streamEncapsulated(session: Session, packet: EncapsulatedPacket?, flags: Int = RakNet.PRIORITY_NORMAL.toInt()) {
+		val id = session.address + ":" + session.port
+		val buffer = Binary.appendBytes(
+				RakNet.PACKET_ENCAPSULATED, byteArrayOf((id.length and 0xff).toByte()),
+				id.toByteArray(StandardCharsets.UTF_8), byteArrayOf((flags and 0xff).toByte()),
+				packet!!.toBinary(true)
+		)
+		server.pushThreadToMainPacket(buffer)
+	}
+
+	fun streamRAW(address: String, port: Int, payload: ByteArray?) {
+		val buffer = Binary.appendBytes(
+				RakNet.PACKET_RAW, byteArrayOf((address.length and 0xff).toByte()),
+				address.toByteArray(StandardCharsets.UTF_8),
+				Binary.writeShort(port),
+				payload
+		)
+		server.pushThreadToMainPacket(buffer)
+	}
+
+	protected fun streamClose(identifier: String, reason: String) {
+		val buffer = Binary.appendBytes(
+				RakNet.PACKET_CLOSE_SESSION, byteArrayOf((identifier.length and 0xff).toByte()),
+				identifier.toByteArray(StandardCharsets.UTF_8), byteArrayOf((reason.length and 0xff).toByte()),
+				reason.toByteArray(StandardCharsets.UTF_8)
+		)
+		server.pushThreadToMainPacket(buffer)
+	}
+
+	protected fun streamInvalid(identifier: String) {
+		val buffer = Binary.appendBytes(
+				RakNet.PACKET_INVALID_SESSION, byteArrayOf((identifier.length and 0xff).toByte()),
+				identifier.toByteArray(StandardCharsets.UTF_8)
+		)
+		server.pushThreadToMainPacket(buffer)
+	}
+
+	protected fun streamOpen(session: Session) {
+		val identifier = session.address + ":" + session.port
+		val buffer = Binary.appendBytes(
+				RakNet.PACKET_OPEN_SESSION, byteArrayOf((identifier.length and 0xff).toByte()),
+				identifier.toByteArray(StandardCharsets.UTF_8), byteArrayOf((session.address.length and 0xff) as Byte),
+				session.address.toByteArray(StandardCharsets.UTF_8),
+				Binary.writeShort(session.port),
+				Binary.writeLong(session.id)
+		)
+		server.pushThreadToMainPacket(buffer)
+	}
+
+	protected fun streamACK(identifier: String, identifierACK: Int) {
+		val buffer = Binary.appendBytes(
+				RakNet.PACKET_ACK_NOTIFICATION, byteArrayOf((identifier.length and 0xff).toByte()),
+				identifier.toByteArray(StandardCharsets.UTF_8),
+				Binary.writeInt(identifierACK)
+		)
+		server.pushThreadToMainPacket(buffer)
+	}
+
+	protected fun streamOption(name: String, value: String) {
+		val buffer = Binary.appendBytes(
+				RakNet.PACKET_SET_OPTION, byteArrayOf((name.length and 0xff).toByte()),
+				name.toByteArray(StandardCharsets.UTF_8),
+				value.toByteArray(StandardCharsets.UTF_8)
+		)
+		server.pushThreadToMainPacket(buffer)
+	}
+
+	private fun checkSessions() {
+		var size = sessions.size
+		if (size > 4096) {
+			val keyToRemove: MutableList<String> = ArrayList()
+			for (i in sessions.keys) {
+				val s = sessions[i]
+				if (s!!.isTemporal) {
+					keyToRemove.add(i)
+					size--
+					if (size <= 4096) {
+						break
+					}
+				}
+			}
+			for (i in keyToRemove) {
+				sessions.remove(i)
+			}
+		}
+	}
+
+	@Throws(Exception::class)
+	fun receiveStream(): Boolean {
+		val packet = server.readMainToThreadPacket()
+		if (packet != null && packet.size > 0) {
+			val id = packet[0]
+			var offset = 1
+			when (id) {
+				RakNet.PACKET_ENCAPSULATED -> {
+					val len = packet[offset++].toInt()
+					val identifier = String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8)
+					offset += len
+					if (sessions.containsKey(identifier)) {
+						val flags = packet[offset++]
+						val buffer = Binary.subBytes(packet, offset)
+						sessions[identifier]!!.addEncapsulatedToQueue(EncapsulatedPacket.Companion.fromBinary(buffer, true), flags.toInt())
+					} else {
+						streamInvalid(identifier)
+					}
+				}
+				RakNet.PACKET_RAW -> {
+					len = packet[offset++]
+					val address = String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8)
+					offset += len
+					val port = Binary.readShort(Binary.subBytes(packet, offset, 2))
+					offset += 2
+					val payload = Binary.subBytes(packet, offset)
+					socket.writePacket(payload, address, port)
+				}
+				RakNet.PACKET_CLOSE_SESSION -> {
+					len = packet[offset++]
+					identifier = String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8)
+					if (sessions.containsKey(identifier)) {
+						removeSession(sessions[identifier])
+					} else {
+						streamInvalid(identifier)
+					}
+				}
+				RakNet.PACKET_INVALID_SESSION -> {
+					len = packet[offset++]
+					identifier = String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8)
+					if (sessions.containsKey(identifier)) {
+						removeSession(sessions[identifier])
+					}
+				}
+				RakNet.PACKET_SET_OPTION -> {
+					len = packet[offset++]
+					val name = String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8)
+					offset += len
+					val value = String(Binary.subBytes(packet, offset), StandardCharsets.UTF_8)
+					when (name) {
+						"name" -> this.name = value
+						"portChecking" -> portChecking = java.lang.Boolean.valueOf(value)
+						"packetLimit" -> packetLimit = Integer.valueOf(value)
+					}
+				}
+				RakNet.PACKET_BLOCK_ADDRESS -> {
+					len = packet[offset++]
+					address = String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8)
+					offset += len
+					val timeout = Binary.readInt(Binary.subBytes(packet, offset, 4))
+					blockAddress(address, timeout)
+				}
+				RakNet.PACKET_UNBLOCK_ADDRESS -> {
+					len = packet[offset++]
+					address = String(Binary.subBytes(packet, offset, len), StandardCharsets.UTF_8)
+					unblockAddress(address)
+				}
+				RakNet.PACKET_SHUTDOWN -> {
+					for (session in ArrayList(sessions.values)) {
+						removeSession(session)
+					}
+					socket.close()
+					shutdown = true
+				}
+				RakNet.PACKET_EMERGENCY_SHUTDOWN -> {
+					shutdown = true
+					return false
+				}
+				else -> return false
+			}
+			return true
+		}
+		return false
+	}
+
+	@JvmOverloads
+	fun blockAddress(address: String, timeout: Int = 300) {
+		var finalTime = System.currentTimeMillis() + timeout * 1000
+		if (!block.containsKey(address) || timeout == -1) {
+			if (timeout == -1) {
+				finalTime = Long.MAX_VALUE
+			} else {
+				logger!!.notice("Blocked $address for $timeout seconds")
+			}
+			block[address] = finalTime
+		} else if (block[address]!! < finalTime) {
+			block[address] = finalTime
+		}
+	}
+
+	fun unblockAddress(address: String) {
+		block.remove(address)
+	}
+
+	fun getSession(ip: String, port: Int): Session? {
+		val id = "$ip:$port"
+		if (!sessions.containsKey(id)) {
+			checkSessions()
+			val session = Session(this, ip, port)
+			sessions[id] = session
+			return session
+		}
+		return sessions[id]
+	}
+
+	@JvmOverloads
+	@Throws(Exception::class)
+	fun removeSession(session: Session?, reason: String = "unknown") {
+		val id = session.getAddress() + ":" + session.getPort()
+		if (sessions.containsKey(id)) {
+			sessions[id]!!.close()
+			sessions.remove(id)
+			streamClose(id, reason)
+		}
+	}
+
+	fun openSession(session: Session) {
+		streamOpen(session)
+	}
+
+	fun notifyACK(session: Session, identifierACK: Int) {
+		streamACK(session.address + ":" + session.port, identifierACK)
+	}
+
+	private fun registerPacket(id: Byte, factory: PacketFactory) {
+		packetPool[id and 0xFF] = factory
+	}
+
+	fun getPacketFromPool(id: Byte): Packet? {
+		return packetPool[id and 0xFF]!!.create()
+	}
+
+	private fun registerPackets() {
+		// fill with dummy returning null
+		Arrays.fill(packetPool, PacketFactory { null } as PacketFactory)
+
+		//this.registerPacket(UNCONNECTED_PING.ID, UNCONNECTED_PING.class);
+		registerPacket(UNCONNECTED_PING_OPEN_CONNECTIONS.Companion.ID, UNCONNECTED_PING_OPEN_CONNECTIONS.Factory())
+		registerPacket(OPEN_CONNECTION_REQUEST_1.Companion.ID, OPEN_CONNECTION_REQUEST_1.Factory())
+		registerPacket(OPEN_CONNECTION_REPLY_1.Companion.ID, OPEN_CONNECTION_REPLY_1.Factory())
+		registerPacket(OPEN_CONNECTION_REQUEST_2.Companion.ID, OPEN_CONNECTION_REQUEST_2.Factory())
+		registerPacket(OPEN_CONNECTION_REPLY_2.Companion.ID, OPEN_CONNECTION_REPLY_2.Factory())
+		registerPacket(UNCONNECTED_PONG.Companion.ID, UNCONNECTED_PONG.Factory())
+		registerPacket(ADVERTISE_SYSTEM.Companion.ID, ADVERTISE_SYSTEM.Factory())
+		registerPacket(DATA_PACKET_0.Companion.ID, DATA_PACKET_0.Factory())
+		registerPacket(DATA_PACKET_1.Companion.ID, DATA_PACKET_1.Factory())
+		registerPacket(DATA_PACKET_2.Companion.ID, DATA_PACKET_2.Factory())
+		registerPacket(DATA_PACKET_3.Companion.ID, DATA_PACKET_3.Factory())
+		registerPacket(DATA_PACKET_4.Companion.ID, DATA_PACKET_4.Factory())
+		registerPacket(DATA_PACKET_5.Companion.ID, DATA_PACKET_5.Factory())
+		registerPacket(DATA_PACKET_6.Companion.ID, DATA_PACKET_6.Factory())
+		registerPacket(DATA_PACKET_7.Companion.ID, DATA_PACKET_7.Factory())
+		registerPacket(DATA_PACKET_8.Companion.ID, DATA_PACKET_8.Factory())
+		registerPacket(DATA_PACKET_9.Companion.ID, DATA_PACKET_9.Factory())
+		registerPacket(DATA_PACKET_A.Companion.ID, DATA_PACKET_A.Factory())
+		registerPacket(DATA_PACKET_B.Companion.ID, DATA_PACKET_B.Factory())
+		registerPacket(DATA_PACKET_C.Companion.ID, DATA_PACKET_C.Factory())
+		registerPacket(DATA_PACKET_D.Companion.ID, DATA_PACKET_D.Factory())
+		registerPacket(DATA_PACKET_E.Companion.ID, DATA_PACKET_E.Factory())
+		registerPacket(DATA_PACKET_F.Companion.ID, DATA_PACKET_F.Factory())
+		registerPacket(NACK.Companion.ID, NACK.Factory())
+		registerPacket(ACK.Companion.ID, ACK.Factory())
+	}
+
+	init {
+		registerPackets()
+		iD = Random().nextLong()
+		this.run()
+	}
 }

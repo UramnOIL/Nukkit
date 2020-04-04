@@ -1,107 +1,101 @@
-package cn.nukkit.network.query;
+package cn.nukkit.network.query
 
-import cn.nukkit.Server;
-import cn.nukkit.event.server.QueryRegenerateEvent;
-import cn.nukkit.utils.Binary;
-
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Random;
+import cn.nukkit.Server
+import cn.nukkit.event.server.QueryRegenerateEvent
+import cn.nukkit.utils.Binary
+import java.security.MessageDigest
+import java.security.NoSuchAlgorithmException
+import java.util.Random
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class QueryHandler {
+class QueryHandler {
+	private val server: Server?
+	private var lastToken: ByteArray?
+	private var token: ByteArray?
+	private var longData: ByteArray?
+	private var shortData: ByteArray?
+	private var timeout: Long = 0
+	fun regenerateInfo() {
+		val ev: QueryRegenerateEvent = server.getQueryInformation()
+		longData = ev.getLongQuery(longData)
+		shortData = ev.getShortQuery(shortData)
+		timeout = System.currentTimeMillis() + ev.getTimeout()
+	}
 
-    public static final byte HANDSHAKE = 0x09;
-    public static final byte STATISTICS = 0x00;
+	fun regenerateToken() {
+		lastToken = token
+		val token = ByteArray(16)
+		for (i in 0..15) {
+			token[i] = Random().nextInt(255) as Byte
+		}
+		this.token = token
+	}
 
-    private final Server server;
-    private byte[] lastToken;
-    private byte[] token;
-    private byte[] longData;
-    private byte[] shortData;
-    private long timeout;
+	fun handle(address: String?, port: Int, packet: ByteArray?) {
+		var offset = 2 //skip MAGIC
+		val packetType = packet!![offset++]
+		val sessionID: Int = Binary.readInt(Binary.subBytes(packet, offset, 4))
+		offset += 4
+		val payload: ByteArray = Binary.subBytes(packet, offset)
+		when (packetType) {
+			HANDSHAKE -> {
+				val reply: ByteArray = Binary.appendBytes(
+						HANDSHAKE,
+						Binary.writeInt(sessionID),
+						getTokenString(token, address).getBytes(), byteArrayOf(0x00))
+				server.network.sendPacket(address, port, reply)
+			}
+			STATISTICS -> {
+				val token: String = String.valueOf(Binary.readInt(Binary.subBytes(payload, 0, 4)))
+				if (!token.equals(getTokenString(this.token, address)) && !token.equals(getTokenString(lastToken, address))) {
+					break
+				}
+				if (timeout < System.currentTimeMillis()) {
+					regenerateInfo()
+				}
+				reply = Binary.appendBytes(
+						STATISTICS,
+						Binary.writeInt(sessionID),
+						if (payload.size == 8) longData else shortData
+				)
+				server.network.sendPacket(address, port, reply)
+			}
+		}
+	}
 
-    public QueryHandler() {
-        this.server = Server.getInstance();
-        this.server.getLogger().info(this.server.getLanguage().translateString("nukkit.server.query.start"));
-        String ip = this.server.getIp();
-        String addr = (!ip.isEmpty()) ? ip : "0.0.0.0";
-        int port = this.server.getPort();
-        this.server.getLogger().info(this.server.getLanguage().translateString("nukkit.server.query.info", String.valueOf(port)));
+	companion object {
+		const val HANDSHAKE: Byte = 0x09
+		const val STATISTICS: Byte = 0x00
+		fun getTokenString(token: ByteArray?, salt: String?): String? {
+			return getTokenString(String(token), salt)
+		}
 
-        this.regenerateToken();
-        this.lastToken = this.token;
-        this.regenerateInfo();
-        this.server.getLogger().info(this.server.getLanguage().translateString("nukkit.server.query.running", new String[]{addr, String.valueOf(port)}));
-    }
+		fun getTokenString(token: String?, salt: String?): String? {
+			return try {
+				String.valueOf(Binary.readInt(Binary.subBytes(MessageDigest.getInstance("SHA-512").digest((salt.toString() + ":" + token).getBytes()), 7, 4)))
+			} catch (e: NoSuchAlgorithmException) {
+				String.valueOf(Random().nextInt())
+			}
+		}
+	}
 
-    public void regenerateInfo() {
-        QueryRegenerateEvent ev = this.server.getQueryInformation();
-        this.longData = ev.getLongQuery(this.longData);
-        this.shortData = ev.getShortQuery(this.shortData);
-        this.timeout = System.currentTimeMillis() + ev.getTimeout();
-    }
-
-    public void regenerateToken() {
-        this.lastToken = this.token;
-        byte[] token = new byte[16];
-        for (int i = 0; i < 16; i++) {
-            token[i] = (byte) new Random().nextInt(255);
-        }
-        this.token = token;
-    }
-
-    public static String getTokenString(byte[] token, String salt) {
-        return getTokenString(new String(token), salt);
-    }
-
-
-    public static String getTokenString(String token, String salt) {
-        try {
-            return String.valueOf(Binary.readInt(Binary.subBytes(MessageDigest.getInstance("SHA-512").digest((salt + ":" + token).getBytes()), 7, 4)));
-        } catch (NoSuchAlgorithmException e) {
-            return String.valueOf(new Random().nextInt());
-        }
-    }
-
-    public void handle(String address, int port, byte[] packet) {
-        int offset = 2; //skip MAGIC
-        byte packetType = packet[offset++];
-        int sessionID = Binary.readInt(Binary.subBytes(packet, offset, 4));
-        offset += 4;
-        byte[] payload = Binary.subBytes(packet, offset);
-
-        switch (packetType) {
-            case HANDSHAKE:
-                byte[] reply = Binary.appendBytes(
-                        HANDSHAKE,
-                        Binary.writeInt(sessionID),
-                        getTokenString(this.token, address).getBytes(),
-                        new byte[]{0x00}
-                );
-
-                this.server.getNetwork().sendPacket(address, port, reply);
-                break;
-            case STATISTICS:
-                String token = String.valueOf(Binary.readInt(Binary.subBytes(payload, 0, 4)));
-                if (!token.equals(getTokenString(this.token, address)) && !token.equals(getTokenString(this.lastToken, address))) {
-                    break;
-                }
-
-                if (this.timeout < System.currentTimeMillis()) {
-                    this.regenerateInfo();
-                }
-                reply = Binary.appendBytes(
-                        STATISTICS,
-                        Binary.writeInt(sessionID),
-                        payload.length == 8 ? this.longData : this.shortData
-                );
-
-                this.server.getNetwork().sendPacket(address, port, reply);
-                break;
-        }
-    }
+	init {
+		server = Server.instance
+		server.getLogger().info(server.getLanguage().translateString("nukkit.server.query.start"))
+		val ip: String = server.getIp()
+		val addr = if (!ip.isEmpty()) ip else "0.0.0.0"
+		val port: Int = server.getPort()
+		server.getLogger().info(server.getLanguage().translateString("nukkit.server.query.info", String.valueOf(port)))
+		regenerateToken()
+		lastToken = token
+		regenerateInfo()
+		server.getLogger().info(server.getLanguage().translateString("nukkit.server.query.running", arrayOf<String?>(addr, String.valueOf(port))))
+	}
 }

@@ -1,32 +1,36 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class ChunkRadiusUpdatedPacket extends DataPacket {
+class ChunkRadiusUpdatedPacket : DataPacket() {
+	var radius = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.CHUNK_RADIUS_UPDATED_PACKET;
+	@Override
+	override fun decode() {
+		radius = this.getVarInt()
+	}
 
-    public int radius;
+	@Override
+	override fun encode() {
+		super.reset()
+		this.putVarInt(radius)
+	}
 
-    @Override
-    public void decode() {
-        this.radius = this.getVarInt();
-    }
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void encode() {
-        super.reset();
-        this.putVarInt(this.radius);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.CHUNK_RADIUS_UPDATED_PACKET
+	}
 }

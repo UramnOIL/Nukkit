@@ -1,69 +1,65 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import kotlin.jvm.Throws
 
-import java.io.IOException;
+class ShortTag : NumberTag<Integer?> {
+	override var data = 0
 
-public class ShortTag extends NumberTag<Integer> {
-    public int data;
+	@Override
+	fun getData(): Integer {
+		return data
+	}
 
-    @Override
-    public Integer getData() {
-        return data;
-    }
+	@Override
+	fun setData(data: Integer?) {
+		this.data = if (data == null) 0 else data
+	}
 
-    @Override
-    public void setData(Integer data) {
-        this.data = data == null ? 0 : data;
-    }
+	constructor(name: String?) : super(name) {}
+	constructor(name: String?, data: Int) : super(name) {
+		this.data = data
+	}
 
-    public ShortTag(String name) {
-        super(name);
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		dos.writeShort(data)
+	}
 
-    public ShortTag(String name, int data) {
-        super(name);
-        this.data = data;
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		data = dis.readUnsignedShort()
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        dos.writeShort(data);
-    }
+	@Override
+	override fun parseValue(): Integer {
+		return data
+	}
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-        data = dis.readUnsignedShort();
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_Short
 
-    @Override
-    public Integer parseValue() {
-        return this.data;
-    }
+	@Override
+	override fun toString(): String {
+		return "" + data
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_Short;
-    }
+	@Override
+	override fun copy(): Tag {
+		return ShortTag(getName(), data)
+	}
 
-    @Override
-    public String toString() {
-        return "" + data;
-    }
-
-    @Override
-    public Tag copy() {
-        return new ShortTag(getName(), data);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            ShortTag o = (ShortTag) obj;
-            return data == o.data;
-        }
-        return false;
-    }
-
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val o = obj as ShortTag
+			return data == o.data
+		}
+		return false
+	}
 }

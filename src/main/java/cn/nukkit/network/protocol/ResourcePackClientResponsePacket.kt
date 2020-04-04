@@ -1,55 +1,58 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
-
-import java.util.UUID;
+import lombok.ToString
+import java.util.UUID
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class ResourcePackClientResponsePacket extends DataPacket {
+class ResourcePackClientResponsePacket : DataPacket() {
+	var responseStatus: Byte = 0
+	var packEntries: Array<Entry?>?
 
-    public static final byte NETWORK_ID = ProtocolInfo.RESOURCE_PACK_CLIENT_RESPONSE_PACKET;
+	@Override
+	override fun decode() {
+		responseStatus = this.getByte() as Byte
+		packEntries = arrayOfNulls<Entry?>(this.getLShort())
+		for (i in packEntries.indices) {
+			val entry: Array<String?> = this.getString().split("_")
+			packEntries!![i] = Entry(UUID.fromString(entry[0]), entry[1])
+		}
+	}
 
-    public static final byte STATUS_REFUSED = 1;
-    public static final byte STATUS_SEND_PACKS = 2;
-    public static final byte STATUS_HAVE_ALL_PACKS = 3;
-    public static final byte STATUS_COMPLETED = 4;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putByte(responseStatus)
+		this.putLShort(packEntries!!.size)
+		for (entry in packEntries!!) {
+			this.putString(entry!!.uuid.toString() + '_' + entry.version)
+		}
+	}
 
-    public byte responseStatus;
-    public Entry[] packEntries;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void decode() {
-        this.responseStatus = (byte) this.getByte();
-        this.packEntries = new Entry[this.getLShort()];
-        for (int i = 0; i < this.packEntries.length; i++) {
-            String[] entry = this.getString().split("_");
-            this.packEntries[i] = new Entry(UUID.fromString(entry[0]), entry[1]);
-        }
-    }
+	@ToString
+	class Entry(uuid: UUID?, version: String?) {
+		val uuid: UUID?
+		val version: String?
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putByte(this.responseStatus);
-        this.putLShort(this.packEntries.length);
-        for (Entry entry : this.packEntries) {
-            this.putString(entry.uuid.toString() + '_' + entry.version);
-        }
-    }
+		init {
+			this.uuid = uuid
+			this.version = version
+		}
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
-    @ToString
-    public static class Entry {
-        public final UUID uuid;
-        public final String version;
-
-        public Entry(UUID uuid, String version) {
-            this.uuid = uuid;
-            this.version = version;
-        }
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.RESOURCE_PACK_CLIENT_RESPONSE_PACKET
+		const val STATUS_REFUSED: Byte = 1
+		const val STATUS_SEND_PACKS: Byte = 2
+		const val STATUS_HAVE_ALL_PACKS: Byte = 3
+		const val STATUS_COMPLETED: Byte = 4
+	}
 }

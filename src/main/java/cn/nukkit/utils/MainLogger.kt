@@ -1,8 +1,8 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.AccessLevel
+import lombok.NoArgsConstructor
+import lombok.extern.log4j.Log4j2
 
 /**
  * author: MagicDroidX
@@ -13,113 +13,96 @@ We need to keep this class for backwards compatibility
  */
 @Log4j2
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class MainLogger extends ThreadedLogger {
+class MainLogger : ThreadedLogger() {
+	override fun emergency(message: String?) {
+		log.fatal(message)
+	}
 
-    private static final MainLogger logger = new MainLogger();
+	override fun alert(message: String?) {
+		log.error(message)
+	}
 
-    public static MainLogger getLogger() {
-        return logger;
-    }
+	override fun critical(message: String?) {
+		log.fatal(message)
+	}
 
-    @Override
-    public void emergency(String message) {
-        log.fatal(message);
-    }
+	override fun error(message: String?) {
+		log.error(message)
+	}
 
-    @Override
-    public void alert(String message) {
-        log.error(message);
-    }
+	override fun warning(message: String?) {
+		log.warn(message)
+	}
 
-    @Override
-    public void critical(String message) {
-        log.fatal(message);
-    }
+	override fun notice(message: String?) {
+		log.warn(message)
+	}
 
-    @Override
-    public void error(String message) {
-        log.error(message);
-    }
+	override fun info(message: String?) {
+		log.info(message)
+	}
 
-    @Override
-    public void warning(String message) {
-        log.warn(message);
-    }
+	override fun debug(message: String?) {
+		log.debug(message)
+	}
 
-    @Override
-    public void notice(String message) {
-        log.warn(message);
-    }
+	fun setLogDebug(logDebug: Boolean?) {
+		throw UnsupportedOperationException()
+	}
 
-    @Override
-    public void info(String message) {
-        log.info(message);
-    }
+	fun logException(t: Throwable?) {
+		log.throwing(t)
+	}
 
-    @Override
-    public void debug(String message) {
-        log.debug(message);
-    }
+	override fun log(level: LogLevel, message: String) {
+		level.log(this, message)
+	}
 
-    public void setLogDebug(Boolean logDebug) {
-        throw new UnsupportedOperationException();
-    }
+	fun shutdown() {
+		throw UnsupportedOperationException()
+	}
 
-    public void logException(Throwable t) {
-        log.throwing(t);
-    }
+	override fun emergency(message: String?, t: Throwable?) {
+		log.fatal(message, t)
+	}
 
-    @Override
-    public void log(LogLevel level, String message) {
-        level.log(this, message);
-    }
+	override fun alert(message: String?, t: Throwable?) {
+		log.error(message, t)
+	}
 
-    public void shutdown() {
-        throw new UnsupportedOperationException();
-    }
+	override fun critical(message: String?, t: Throwable?) {
+		log.fatal(message, t)
+	}
 
-    @Override
-    public void emergency(String message, Throwable t) {
-        log.fatal(message, t);
-    }
+	override fun error(message: String?, t: Throwable?) {
+		log.error(message, t)
+	}
 
-    @Override
-    public void alert(String message, Throwable t) {
-        log.error(message, t);
-    }
+	override fun warning(message: String?, t: Throwable?) {
+		log.warn(message, t)
+	}
 
-    @Override
-    public void critical(String message, Throwable t) {
-        log.fatal(message, t);
-    }
+	override fun notice(message: String?, t: Throwable?) {
+		log.warn(message, t)
+	}
 
-    @Override
-    public void error(String message, Throwable t) {
-        log.error(message, t);
-    }
+	override fun info(message: String?, t: Throwable?) {
+		log.info(message, t)
+	}
 
-    @Override
-    public void warning(String message, Throwable t) {
-        log.warn(message, t);
-    }
+	override fun debug(message: String?, t: Throwable?) {
+		log.debug(message, t)
+	}
 
-    @Override
-    public void notice(String message, Throwable t) {
-        log.warn(message, t);
-    }
+	override fun log(level: LogLevel, message: String, t: Throwable) {
+		level.log(this, message, t)
+	}
 
-    @Override
-    public void info(String message, Throwable t) {
-        log.info(message, t);
-    }
-
-    @Override
-    public void debug(String message, Throwable t) {
-        log.debug(message, t);
-    }
-
-    @Override
-    public void log(LogLevel level, String message, Throwable t) {
-        level.log(this, message, t);
-    }
+	companion object {
+		private val logger = MainLogger()
+		@JvmStatic
+		fun getLogger(): MainLogger {
+			return logger
+		}
+	}
 }

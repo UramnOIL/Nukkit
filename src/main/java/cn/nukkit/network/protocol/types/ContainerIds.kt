@@ -1,18 +1,24 @@
-package cn.nukkit.network.protocol.types;
+package cn.nukkit.network.protocol.types
+
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author CreeperFace
  */
-public interface ContainerIds {
-
-    int NONE = -1;
-    int INVENTORY = 0;
-    int FIRST = 1;
-    int LAST = 100;
-    int OFFHAND = 119;
-    int ARMOR = 120;
-    int CREATIVE = 121;
-    int HOTBAR = 122;
-    int FIXED_INVENTORY = 123;
-    int UI = 124;
+interface ContainerIds {
+	companion object {
+		const val NONE = -1
+		const val INVENTORY = 0
+		const val FIRST = 1
+		const val LAST = 100
+		const val OFFHAND = 119
+		const val ARMOR = 120
+		const val CREATIVE = 121
+		const val HOTBAR = 122
+		const val FIXED_INVENTORY = 123
+		const val UI = 124
+	}
 }

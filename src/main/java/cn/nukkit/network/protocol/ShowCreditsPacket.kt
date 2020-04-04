@@ -1,33 +1,37 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class ShowCreditsPacket extends DataPacket {
+class ShowCreditsPacket : DataPacket() {
+	var eid: Long = 0
+	var status = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.SHOW_CREDITS_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public static final int STATUS_START_CREDITS = 0;
-    public static final int STATUS_END_CREDITS = 1;
+	@Override
+	override fun decode() {
+		eid = this.getEntityRuntimeId()
+		status = this.getVarInt()
+	}
 
-    public long eid;
-    public int status;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityRuntimeId(eid)
+		this.putVarInt(status)
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
-    @Override
-    public void decode() {
-        this.eid = this.getEntityRuntimeId();
-        this.status = this.getVarInt();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityRuntimeId(this.eid);
-        this.putVarInt(this.status);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SHOW_CREDITS_PACKET
+		const val STATUS_START_CREDITS = 0
+		const val STATUS_END_CREDITS = 1
+	}
 }

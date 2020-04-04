@@ -1,25 +1,29 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-public class MapCreateLockedCopyPacket extends DataPacket {
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
-    public long originalMapId;
-    public long newMapId;
+class MapCreateLockedCopyPacket : DataPacket() {
+	var originalMapId: Long = 0
+	var newMapId: Long = 0
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.MAP_CREATE_LOCKED_COPY_PACKET;
-    }
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.MAP_CREATE_LOCKED_COPY_PACKET
+	}
 
-    @Override
-    public void decode() {
-        this.originalMapId = this.getVarLong();
-        this.newMapId = this.getVarLong();
-    }
+	@Override
+	override fun decode() {
+		originalMapId = this.getVarLong()
+		newMapId = this.getVarLong()
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarLong(this.originalMapId);
-        this.putVarLong(this.newMapId);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarLong(originalMapId)
+		this.putVarLong(newMapId)
+	}
 }

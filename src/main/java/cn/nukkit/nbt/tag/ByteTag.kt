@@ -1,72 +1,69 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import kotlin.jvm.Throws
 
-import java.io.IOException;
+class ByteTag : NumberTag<Integer?> {
+	override var data = 0
 
-public class ByteTag extends NumberTag<Integer> {
-    public int data;
+	@Override
+	fun getData(): Integer {
+		return data
+	}
 
-    @Override
-    public Integer getData() {
-        return data;
-    }
+	@Override
+	fun setData(data: Integer?) {
+		this.data = if (data == null) 0 else data
+	}
 
-    @Override
-    public void setData(Integer data) {
-        this.data = data == null ? 0 : data;
-    }
+	constructor(name: String?) : super(name) {}
+	constructor(name: String?, data: Int) : super(name) {
+		this.data = data
+	}
 
-    public ByteTag(String name) {
-        super(name);
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		dos.writeByte(data)
+	}
 
-    public ByteTag(String name, int data) {
-        super(name);
-        this.data = data;
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		data = dis.readByte()
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        dos.writeByte(data);
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_Byte
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-        data = dis.readByte();
-    }
+	@Override
+	override fun parseValue(): Integer {
+		return data
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_Byte;
-    }
+	@Override
+	override fun toString(): String {
+		var hex: String = Integer.toHexString(data)
+		if (hex.length() < 2) {
+			hex = "0$hex"
+		}
+		return "ByteTag " + this.getName().toString() + " (data: 0x" + hex + ")"
+	}
 
-    @Override
-    public Integer parseValue() {
-        return this.data;
-    }
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val byteTag = obj as ByteTag
+			return data == byteTag.data
+		}
+		return false
+	}
 
-    @Override
-    public String toString() {
-        String hex = Integer.toHexString(this.data);
-        if (hex.length() < 2) {
-            hex = "0" + hex;
-        }
-        return "ByteTag " + this.getName() + " (data: 0x" + hex + ")";
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            ByteTag byteTag = (ByteTag) obj;
-            return data == byteTag.data;
-        }
-        return false;
-    }
-
-    @Override
-    public Tag copy() {
-        return new ByteTag(getName(), data);
-    }
+	@Override
+	override fun copy(): Tag {
+		return ByteTag(getName(), data)
+	}
 }

@@ -1,60 +1,63 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-
-import cn.nukkit.item.Item;
-import lombok.ToString;
-
-import java.util.UUID;
+import cn.nukkit.item.Item
+import lombok.ToString
+import java.util.UUID
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author Nukkit Project Team
  */
 @ToString
-public class CraftingEventPacket extends DataPacket {
+class CraftingEventPacket : DataPacket() {
+	var windowId = 0
+	var type = 0
+	var id: UUID? = null
+	var input: Array<Item?>?
+	var output: Array<Item?>?
 
-    public static final byte NETWORK_ID = ProtocolInfo.CRAFTING_EVENT_PACKET;
+	@Override
+	override fun decode() {
+		windowId = this.getByte()
+		type = this.getVarInt()
+		id = this.getUUID()
+		val inputSize = this.getUnsignedVarInt() as Int
+		input = arrayOfNulls<Item?>(inputSize)
+		run {
+			var i = 0
+			while (i < inputSize && i < 128) {
+				input!![i] = this.getSlot()
+				++i
+			}
+		}
+		val outputSize = this.getUnsignedVarInt() as Int
+		output = arrayOfNulls<Item?>(outputSize)
+		var i = 0
+		while (i < outputSize && i < 128) {
+			output!![i] = getSlot()
+			++i
+		}
+	}
 
-    public static final int TYPE_SHAPELESS = 0;
-    public static final int TYPE_SHAPED = 1;
-    public static final int TYPE_FURNACE = 2;
-    public static final int TYPE_FURNACE_DATA = 3;
-    public static final int TYPE_MULTI = 4;
-    public static final int TYPE_SHULKER_BOX = 5;
+	@Override
+	override fun encode() {
+	}
 
-    public int windowId;
-    public int type;
-    public UUID id;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public Item[] input;
-    public Item[] output;
-
-    @Override
-    public void decode() {
-        this.windowId = this.getByte();
-        this.type = this.getVarInt();
-        this.id = this.getUUID();
-
-        int inputSize = (int) this.getUnsignedVarInt();
-        this.input = new Item[inputSize];
-        for (int i = 0; i < inputSize && i < 128; ++i) {
-            this.input[i] = this.getSlot();
-        }
-
-        int outputSize = (int) this.getUnsignedVarInt();
-        this.output = new Item[outputSize];
-        for (int i = 0; i < outputSize && i < 128; ++i) {
-            this.output[i] = getSlot();
-        }
-    }
-
-    @Override
-    public void encode() {
-
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.CRAFTING_EVENT_PACKET
+		const val TYPE_SHAPELESS = 0
+		const val TYPE_SHAPED = 1
+		const val TYPE_FURNACE = 2
+		const val TYPE_FURNACE_DATA = 3
+		const val TYPE_MULTI = 4
+		const val TYPE_SHULKER_BOX = 5
+	}
 }

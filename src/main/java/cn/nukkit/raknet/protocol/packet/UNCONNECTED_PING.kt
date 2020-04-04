@@ -1,41 +1,33 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.RakNet;
-import cn.nukkit.raknet.protocol.Packet;
+import cn.nukkit.raknet.RakNet
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class UNCONNECTED_PING extends Packet {
-    public static final byte ID = (byte) 0x01;
+open class UNCONNECTED_PING : Packet() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	var pingID: Long = 0
+	override fun encode() {
+		super.encode()
+		putLong(pingID)
+		put(RakNet.MAGIC)
+	}
 
-    public long pingID;
+	override fun decode() {
+		super.decode()
+		pingID = this.long
+	}
 
-    @Override
-    public void encode() {
-        super.encode();
-        this.putLong(this.pingID);
-        this.put(RakNet.MAGIC);
-    }
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return UNCONNECTED_PING()
+		}
+	}
 
-    @Override
-    public void decode() {
-        super.decode();
-        this.pingID = this.getLong();
-    }
-
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new UNCONNECTED_PING();
-        }
-
-    }
+	companion object {
+		const val iD = 0x01.toByte()
+	}
 }

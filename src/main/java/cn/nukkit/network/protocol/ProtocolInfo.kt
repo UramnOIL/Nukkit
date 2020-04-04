@@ -1,164 +1,164 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import com.google.common.primitives.Ints;
-
-import java.util.List;
+import com.google.common.primitives.Ints
+import java.util.List
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX &amp; iNevet
  * Nukkit Project
  */
-public interface ProtocolInfo {
+interface ProtocolInfo {
+	companion object {
+		/**
+		 * Actual Minecraft: PE protocol version
+		 */
+		@SuppressWarnings("UnnecessaryBoxing")
+		val CURRENT_PROTOCOL: Int = Integer.valueOf("389") // DO NOT REMOVE BOXING
+		val SUPPORTED_PROTOCOLS: List<Integer?>? = Ints.asList(CURRENT_PROTOCOL)
+		val MINECRAFT_VERSION: String? = "v1.14.0"
+		val MINECRAFT_VERSION_NETWORK: String? = "1.14.0"
+		const val LOGIN_PACKET: Byte = 0x01
+		const val PLAY_STATUS_PACKET: Byte = 0x02
+		const val SERVER_TO_CLIENT_HANDSHAKE_PACKET: Byte = 0x03
+		const val CLIENT_TO_SERVER_HANDSHAKE_PACKET: Byte = 0x04
+		const val DISCONNECT_PACKET: Byte = 0x05
+		const val RESOURCE_PACKS_INFO_PACKET: Byte = 0x06
+		const val RESOURCE_PACK_STACK_PACKET: Byte = 0x07
+		const val RESOURCE_PACK_CLIENT_RESPONSE_PACKET: Byte = 0x08
+		const val TEXT_PACKET: Byte = 0x09
+		const val SET_TIME_PACKET: Byte = 0x0a
+		const val START_GAME_PACKET: Byte = 0x0b
+		const val ADD_PLAYER_PACKET: Byte = 0x0c
+		const val ADD_ENTITY_PACKET: Byte = 0x0d
+		const val REMOVE_ENTITY_PACKET: Byte = 0x0e
+		const val ADD_ITEM_ENTITY_PACKET: Byte = 0x0f
+		const val TAKE_ITEM_ENTITY_PACKET: Byte = 0x11
+		const val MOVE_ENTITY_ABSOLUTE_PACKET: Byte = 0x12
+		const val MOVE_PLAYER_PACKET: Byte = 0x13
+		const val RIDER_JUMP_PACKET: Byte = 0x14
+		const val UPDATE_BLOCK_PACKET: Byte = 0x15
+		const val ADD_PAINTING_PACKET: Byte = 0x16
+		const val TICK_SYNC_PACKET: Byte = 0x17
+		const val LEVEL_SOUND_EVENT_PACKET_V1: Byte = 0x18
+		const val LEVEL_EVENT_PACKET: Byte = 0x19
+		const val BLOCK_EVENT_PACKET: Byte = 0x1a
+		const val ENTITY_EVENT_PACKET: Byte = 0x1b
+		const val MOB_EFFECT_PACKET: Byte = 0x1c
+		const val UPDATE_ATTRIBUTES_PACKET: Byte = 0x1d
+		const val INVENTORY_TRANSACTION_PACKET: Byte = 0x1e
+		const val MOB_EQUIPMENT_PACKET: Byte = 0x1f
+		const val MOB_ARMOR_EQUIPMENT_PACKET: Byte = 0x20
+		const val INTERACT_PACKET: Byte = 0x21
+		const val BLOCK_PICK_REQUEST_PACKET: Byte = 0x22
+		const val ENTITY_PICK_REQUEST_PACKET: Byte = 0x23
+		const val PLAYER_ACTION_PACKET: Byte = 0x24
+		const val ENTITY_FALL_PACKET: Byte = 0x25
+		const val HURT_ARMOR_PACKET: Byte = 0x26
+		const val SET_ENTITY_DATA_PACKET: Byte = 0x27
+		const val SET_ENTITY_MOTION_PACKET: Byte = 0x28
+		const val SET_ENTITY_LINK_PACKET: Byte = 0x29
+		const val SET_HEALTH_PACKET: Byte = 0x2a
+		const val SET_SPAWN_POSITION_PACKET: Byte = 0x2b
+		const val ANIMATE_PACKET: Byte = 0x2c
+		const val RESPAWN_PACKET: Byte = 0x2d
+		const val CONTAINER_OPEN_PACKET: Byte = 0x2e
+		const val CONTAINER_CLOSE_PACKET: Byte = 0x2f
+		const val PLAYER_HOTBAR_PACKET: Byte = 0x30
+		const val INVENTORY_CONTENT_PACKET: Byte = 0x31
+		const val INVENTORY_SLOT_PACKET: Byte = 0x32
+		const val CONTAINER_SET_DATA_PACKET: Byte = 0x33
+		const val CRAFTING_DATA_PACKET: Byte = 0x34
+		const val CRAFTING_EVENT_PACKET: Byte = 0x35
+		const val GUI_DATA_PICK_ITEM_PACKET: Byte = 0x36
+		const val ADVENTURE_SETTINGS_PACKET: Byte = 0x37
+		const val BLOCK_ENTITY_DATA_PACKET: Byte = 0x38
+		const val PLAYER_INPUT_PACKET: Byte = 0x39
+		const val FULL_CHUNK_DATA_PACKET: Byte = 0x3a
+		const val SET_COMMANDS_ENABLED_PACKET: Byte = 0x3b
+		const val SET_DIFFICULTY_PACKET: Byte = 0x3c
+		const val CHANGE_DIMENSION_PACKET: Byte = 0x3d
+		const val SET_PLAYER_GAME_TYPE_PACKET: Byte = 0x3e
+		const val PLAYER_LIST_PACKET: Byte = 0x3f
+		const val SIMPLE_EVENT_PACKET: Byte = 0x40
+		const val EVENT_PACKET: Byte = 0x41
+		const val SPAWN_EXPERIENCE_ORB_PACKET: Byte = 0x42
+		const val CLIENTBOUND_MAP_ITEM_DATA_PACKET: Byte = 0x43
+		const val MAP_INFO_REQUEST_PACKET: Byte = 0x44
+		const val REQUEST_CHUNK_RADIUS_PACKET: Byte = 0x45
+		const val CHUNK_RADIUS_UPDATED_PACKET: Byte = 0x46
+		const val ITEM_FRAME_DROP_ITEM_PACKET: Byte = 0x47
+		const val GAME_RULES_CHANGED_PACKET: Byte = 0x48
+		const val CAMERA_PACKET: Byte = 0x49
+		const val BOSS_EVENT_PACKET: Byte = 0x4a
+		const val SHOW_CREDITS_PACKET: Byte = 0x4b
+		const val AVAILABLE_COMMANDS_PACKET: Byte = 0x4c
+		const val COMMAND_REQUEST_PACKET: Byte = 0x4d
+		const val COMMAND_BLOCK_UPDATE_PACKET: Byte = 0x4e
+		const val COMMAND_OUTPUT_PACKET: Byte = 0x4f
+		const val UPDATE_TRADE_PACKET: Byte = 0x50
+		const val UPDATE_EQUIPMENT_PACKET: Byte = 0x51
+		const val RESOURCE_PACK_DATA_INFO_PACKET: Byte = 0x52
+		const val RESOURCE_PACK_CHUNK_DATA_PACKET: Byte = 0x53
+		const val RESOURCE_PACK_CHUNK_REQUEST_PACKET: Byte = 0x54
+		const val TRANSFER_PACKET: Byte = 0x55
+		const val PLAY_SOUND_PACKET: Byte = 0x56
+		const val STOP_SOUND_PACKET: Byte = 0x57
+		const val SET_TITLE_PACKET: Byte = 0x58
+		const val ADD_BEHAVIOR_TREE_PACKET: Byte = 0x59
+		const val STRUCTURE_BLOCK_UPDATE_PACKET: Byte = 0x5a
+		const val SHOW_STORE_OFFER_PACKET: Byte = 0x5b
+		const val PURCHASE_RECEIPT_PACKET: Byte = 0x5c
+		const val PLAYER_SKIN_PACKET: Byte = 0x5d
+		const val SUB_CLIENT_LOGIN_PACKET: Byte = 0x5e
+		const val INITIATE_WEB_SOCKET_CONNECTION_PACKET: Byte = 0x5f
+		const val SET_LAST_HURT_BY_PACKET: Byte = 0x60
+		const val BOOK_EDIT_PACKET: Byte = 0x61
+		const val NPC_REQUEST_PACKET: Byte = 0x62
+		const val PHOTO_TRANSFER_PACKET: Byte = 0x63
+		const val MODAL_FORM_REQUEST_PACKET: Byte = 0x64
+		const val MODAL_FORM_RESPONSE_PACKET: Byte = 0x65
+		const val SERVER_SETTINGS_REQUEST_PACKET: Byte = 0x66
+		const val SERVER_SETTINGS_RESPONSE_PACKET: Byte = 0x67
+		const val SHOW_PROFILE_PACKET: Byte = 0x68
+		const val SET_DEFAULT_GAME_TYPE_PACKET: Byte = 0x69
+		const val MOVE_ENTITY_DELTA_PACKET: Byte = 0x6f
+		const val SET_SCOREBOARD_IDENTITY_PACKET: Byte = 0x70
+		const val SET_LOCAL_PLAYER_AS_INITIALIZED_PACKET: Byte = 0x71
+		const val UPDATE_SOFT_ENUM_PACKET: Byte = 0x72
+		const val NETWORK_STACK_LATENCY_PACKET: Byte = 0x73
+		const val SCRIPT_CUSTOM_EVENT_PACKET: Byte = 0x75
+		const val SPAWN_PARTICLE_EFFECT_PACKET: Byte = 0x76
+		const val AVAILABLE_ENTITY_IDENTIFIERS_PACKET: Byte = 0x77
+		const val LEVEL_SOUND_EVENT_PACKET_V2: Byte = 0x78
+		const val NETWORK_CHUNK_PUBLISHER_UPDATE_PACKET: Byte = 0x79
+		const val BIOME_DEFINITION_LIST_PACKET: Byte = 0x7a
+		const val LEVEL_SOUND_EVENT_PACKET: Byte = 0x7b
+		const val LEVEL_EVENT_GENERIC_PACKET: Byte = 0x7c
+		const val LECTERN_UPDATE_PACKET: Byte = 0x7d
+		const val VIDEO_STREAM_CONNECT_PACKET: Byte = 0x7e
 
-    /**
-     * Actual Minecraft: PE protocol version
-     */
-    @SuppressWarnings("UnnecessaryBoxing")
-    int CURRENT_PROTOCOL = Integer.valueOf("389"); // DO NOT REMOVE BOXING
-
-    List<Integer> SUPPORTED_PROTOCOLS = Ints.asList(CURRENT_PROTOCOL);
-
-    String MINECRAFT_VERSION = "v1.14.0";
-    String MINECRAFT_VERSION_NETWORK = "1.14.0";
-
-    byte LOGIN_PACKET = 0x01;
-    byte PLAY_STATUS_PACKET = 0x02;
-    byte SERVER_TO_CLIENT_HANDSHAKE_PACKET = 0x03;
-    byte CLIENT_TO_SERVER_HANDSHAKE_PACKET = 0x04;
-    byte DISCONNECT_PACKET = 0x05;
-    byte RESOURCE_PACKS_INFO_PACKET = 0x06;
-    byte RESOURCE_PACK_STACK_PACKET = 0x07;
-    byte RESOURCE_PACK_CLIENT_RESPONSE_PACKET = 0x08;
-    byte TEXT_PACKET = 0x09;
-    byte SET_TIME_PACKET = 0x0a;
-    byte START_GAME_PACKET = 0x0b;
-    byte ADD_PLAYER_PACKET = 0x0c;
-    byte ADD_ENTITY_PACKET = 0x0d;
-    byte REMOVE_ENTITY_PACKET = 0x0e;
-    byte ADD_ITEM_ENTITY_PACKET = 0x0f;
-    byte TAKE_ITEM_ENTITY_PACKET = 0x11;
-    byte MOVE_ENTITY_ABSOLUTE_PACKET = 0x12;
-    byte MOVE_PLAYER_PACKET = 0x13;
-    byte RIDER_JUMP_PACKET = 0x14;
-    byte UPDATE_BLOCK_PACKET = 0x15;
-    byte ADD_PAINTING_PACKET = 0x16;
-    byte TICK_SYNC_PACKET = 0x17;
-    byte LEVEL_SOUND_EVENT_PACKET_V1 = 0x18;
-    byte LEVEL_EVENT_PACKET = 0x19;
-    byte BLOCK_EVENT_PACKET = 0x1a;
-    byte ENTITY_EVENT_PACKET = 0x1b;
-    byte MOB_EFFECT_PACKET = 0x1c;
-    byte UPDATE_ATTRIBUTES_PACKET = 0x1d;
-    byte INVENTORY_TRANSACTION_PACKET = 0x1e;
-    byte MOB_EQUIPMENT_PACKET = 0x1f;
-    byte MOB_ARMOR_EQUIPMENT_PACKET = 0x20;
-    byte INTERACT_PACKET = 0x21;
-    byte BLOCK_PICK_REQUEST_PACKET = 0x22;
-    byte ENTITY_PICK_REQUEST_PACKET = 0x23;
-    byte PLAYER_ACTION_PACKET = 0x24;
-    byte ENTITY_FALL_PACKET = 0x25;
-    byte HURT_ARMOR_PACKET = 0x26;
-    byte SET_ENTITY_DATA_PACKET = 0x27;
-    byte SET_ENTITY_MOTION_PACKET = 0x28;
-    byte SET_ENTITY_LINK_PACKET = 0x29;
-    byte SET_HEALTH_PACKET = 0x2a;
-    byte SET_SPAWN_POSITION_PACKET = 0x2b;
-    byte ANIMATE_PACKET = 0x2c;
-    byte RESPAWN_PACKET = 0x2d;
-    byte CONTAINER_OPEN_PACKET = 0x2e;
-    byte CONTAINER_CLOSE_PACKET = 0x2f;
-    byte PLAYER_HOTBAR_PACKET = 0x30;
-    byte INVENTORY_CONTENT_PACKET = 0x31;
-    byte INVENTORY_SLOT_PACKET = 0x32;
-    byte CONTAINER_SET_DATA_PACKET = 0x33;
-    byte CRAFTING_DATA_PACKET = 0x34;
-    byte CRAFTING_EVENT_PACKET = 0x35;
-    byte GUI_DATA_PICK_ITEM_PACKET = 0x36;
-    byte ADVENTURE_SETTINGS_PACKET = 0x37;
-    byte BLOCK_ENTITY_DATA_PACKET = 0x38;
-    byte PLAYER_INPUT_PACKET = 0x39;
-    byte FULL_CHUNK_DATA_PACKET = 0x3a;
-    byte SET_COMMANDS_ENABLED_PACKET = 0x3b;
-    byte SET_DIFFICULTY_PACKET = 0x3c;
-    byte CHANGE_DIMENSION_PACKET = 0x3d;
-    byte SET_PLAYER_GAME_TYPE_PACKET = 0x3e;
-    byte PLAYER_LIST_PACKET = 0x3f;
-    byte SIMPLE_EVENT_PACKET = 0x40;
-    byte EVENT_PACKET = 0x41;
-    byte SPAWN_EXPERIENCE_ORB_PACKET = 0x42;
-    byte CLIENTBOUND_MAP_ITEM_DATA_PACKET = 0x43;
-    byte MAP_INFO_REQUEST_PACKET = 0x44;
-    byte REQUEST_CHUNK_RADIUS_PACKET = 0x45;
-    byte CHUNK_RADIUS_UPDATED_PACKET = 0x46;
-    byte ITEM_FRAME_DROP_ITEM_PACKET = 0x47;
-    byte GAME_RULES_CHANGED_PACKET = 0x48;
-    byte CAMERA_PACKET = 0x49;
-    byte BOSS_EVENT_PACKET = 0x4a;
-    byte SHOW_CREDITS_PACKET = 0x4b;
-    byte AVAILABLE_COMMANDS_PACKET = 0x4c;
-    byte COMMAND_REQUEST_PACKET = 0x4d;
-    byte COMMAND_BLOCK_UPDATE_PACKET = 0x4e;
-    byte COMMAND_OUTPUT_PACKET = 0x4f;
-    byte UPDATE_TRADE_PACKET = 0x50;
-    byte UPDATE_EQUIPMENT_PACKET = 0x51;
-    byte RESOURCE_PACK_DATA_INFO_PACKET = 0x52;
-    byte RESOURCE_PACK_CHUNK_DATA_PACKET = 0x53;
-    byte RESOURCE_PACK_CHUNK_REQUEST_PACKET = 0x54;
-    byte TRANSFER_PACKET = 0x55;
-    byte PLAY_SOUND_PACKET = 0x56;
-    byte STOP_SOUND_PACKET = 0x57;
-    byte SET_TITLE_PACKET = 0x58;
-    byte ADD_BEHAVIOR_TREE_PACKET = 0x59;
-    byte STRUCTURE_BLOCK_UPDATE_PACKET = 0x5a;
-    byte SHOW_STORE_OFFER_PACKET = 0x5b;
-    byte PURCHASE_RECEIPT_PACKET = 0x5c;
-    byte PLAYER_SKIN_PACKET = 0x5d;
-    byte SUB_CLIENT_LOGIN_PACKET = 0x5e;
-    byte INITIATE_WEB_SOCKET_CONNECTION_PACKET = 0x5f;
-    byte SET_LAST_HURT_BY_PACKET = 0x60;
-    byte BOOK_EDIT_PACKET = 0x61;
-    byte NPC_REQUEST_PACKET = 0x62;
-    byte PHOTO_TRANSFER_PACKET = 0x63;
-    byte MODAL_FORM_REQUEST_PACKET = 0x64;
-    byte MODAL_FORM_RESPONSE_PACKET = 0x65;
-    byte SERVER_SETTINGS_REQUEST_PACKET = 0x66;
-    byte SERVER_SETTINGS_RESPONSE_PACKET = 0x67;
-    byte SHOW_PROFILE_PACKET = 0x68;
-    byte SET_DEFAULT_GAME_TYPE_PACKET = 0x69;
-    byte MOVE_ENTITY_DELTA_PACKET = 0x6f;
-    byte SET_SCOREBOARD_IDENTITY_PACKET = 0x70;
-    byte SET_LOCAL_PLAYER_AS_INITIALIZED_PACKET = 0x71;
-    byte UPDATE_SOFT_ENUM_PACKET = 0x72;
-    byte NETWORK_STACK_LATENCY_PACKET = 0x73;
-
-    byte SCRIPT_CUSTOM_EVENT_PACKET = 0x75;
-    byte SPAWN_PARTICLE_EFFECT_PACKET = 0x76;
-    byte AVAILABLE_ENTITY_IDENTIFIERS_PACKET = 0x77;
-    byte LEVEL_SOUND_EVENT_PACKET_V2 = 0x78;
-    byte NETWORK_CHUNK_PUBLISHER_UPDATE_PACKET = 0x79;
-    byte BIOME_DEFINITION_LIST_PACKET = 0x7a;
-    byte LEVEL_SOUND_EVENT_PACKET = 0x7b;
-    byte LEVEL_EVENT_GENERIC_PACKET = 0x7c;
-    byte LECTERN_UPDATE_PACKET = 0x7d;
-    byte VIDEO_STREAM_CONNECT_PACKET = 0x7e;
-    //byte ADD_ENTITY_PACKET = 0x7f;
-    //byte REMOVE_ENTITY_PACKET = 0x80;
-    byte CLIENT_CACHE_STATUS_PACKET = (byte) 0x81;
-    byte ON_SCREEN_TEXTURE_ANIMATION_PACKET = (byte) 0x82;
-    byte MAP_CREATE_LOCKED_COPY_PACKET = (byte) 0x83;
-    byte STRUCTURE_TEMPLATE_DATA_EXPORT_REQUEST = (byte) 0x84;
-    byte STRUCTURE_TEMPLATE_DATA_EXPORT_RESPONSE = (byte) 0x85;
-    byte UPDATE_BLOCK_PROPERTIES = (byte) 0x86;
-    byte CLIENT_CACHE_BLOB_STATUS_PACKET = (byte) 0x87;
-    byte CLIENT_CACHE_MISS_RESPONSE_PACKET = (byte) 0x88;
-    byte EDUCATION_SETTINGS_PACKET = (byte) 0x89;
-    byte EMOTE_PACKET = (byte) 0x8a;
-    byte MULTIPLAYER_SETTINGS_PACKET = (byte) 0x8b;
-    byte SETTINGS_COMMAND_PACKET = (byte) 0x8c;
-    byte ANVIL_DAMAGE_PACKET = (byte) 0x8d;
-    byte COMPLETED_USING_ITEM_PACKET = (byte) 0x8e;
-    byte NETWORK_SETTINGS_PACKET = (byte) 0x8f;
-    byte PLAYER_AUTH_INPUT_PACKET = (byte) 0x90;
-
-    byte BATCH_PACKET = (byte) 0xff;
+		//byte ADD_ENTITY_PACKET = 0x7f;
+		//byte REMOVE_ENTITY_PACKET = 0x80;
+		const val CLIENT_CACHE_STATUS_PACKET = 0x81.toByte()
+		const val ON_SCREEN_TEXTURE_ANIMATION_PACKET = 0x82.toByte()
+		const val MAP_CREATE_LOCKED_COPY_PACKET = 0x83.toByte()
+		const val STRUCTURE_TEMPLATE_DATA_EXPORT_REQUEST = 0x84.toByte()
+		const val STRUCTURE_TEMPLATE_DATA_EXPORT_RESPONSE = 0x85.toByte()
+		const val UPDATE_BLOCK_PROPERTIES = 0x86.toByte()
+		const val CLIENT_CACHE_BLOB_STATUS_PACKET = 0x87.toByte()
+		const val CLIENT_CACHE_MISS_RESPONSE_PACKET = 0x88.toByte()
+		const val EDUCATION_SETTINGS_PACKET = 0x89.toByte()
+		const val EMOTE_PACKET = 0x8a.toByte()
+		const val MULTIPLAYER_SETTINGS_PACKET = 0x8b.toByte()
+		const val SETTINGS_COMMAND_PACKET = 0x8c.toByte()
+		const val ANVIL_DAMAGE_PACKET = 0x8d.toByte()
+		const val COMPLETED_USING_ITEM_PACKET = 0x8e.toByte()
+		const val NETWORK_SETTINGS_PACKET = 0x8f.toByte()
+		const val PLAYER_AUTH_INPUT_PACKET = 0x90.toByte()
+		const val BATCH_PACKET = 0xff.toByte()
+	}
 }

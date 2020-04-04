@@ -1,20 +1,23 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-public class Hash {
-    public static long hashBlock(int x, int y, int z) {
-        return y + (((long) x & 0x3FFFFFF) << 8) + (((long) z & 0x3FFFFFF) << 34);
-    }
+object Hash {
+	@JvmStatic
+	fun hashBlock(x: Int, y: Int, z: Int): Long {
+		return y + (x.toLong() and 0x3FFFFFF shl 8) + (z.toLong() and 0x3FFFFFF shl 34)
+	}
 
+	@JvmStatic
+	fun hashBlockX(triple: Long): Int {
+		return (triple shr 8 and 0x3FFFFFF shl 38 shr 38).toInt()
+	}
 
-    public static final int hashBlockX(long triple) {
-        return (int) ((((triple >> 8) & 0x3FFFFFF) << 38) >> 38);
-    }
+	@JvmStatic
+	fun hashBlockY(triple: Long): Int {
+		return (triple and 0xFF).toInt()
+	}
 
-    public static final int hashBlockY(long triple) {
-        return (int) (triple & 0xFF);
-    }
-
-    public static final int hashBlockZ(long triple) {
-        return (int) ((((triple >> 34) & 0x3FFFFFF) << 38) >> 38);
-    }
+	@JvmStatic
+	fun hashBlockZ(triple: Long): Int {
+		return (triple shr 34 and 0x3FFFFFF shl 38 shr 38).toInt()
+	}
 }

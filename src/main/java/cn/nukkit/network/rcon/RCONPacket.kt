@@ -1,61 +1,49 @@
-package cn.nukkit.network.rcon;
+package cn.nukkit.network.rcon
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * A data structure representing an RCON packet.
  *
  * @author Tee7even
  */
-public class RCONPacket {
-    private final int id;
-    private final int type;
-    private final byte[] payload;
+class RCONPacket {
+	val id: Int
+	val type: Int
+	val payload: ByteArray?
 
-    public RCONPacket(int id, int type, byte[] payload) {
-        this.id = id;
-        this.type = type;
-        this.payload = payload;
-    }
+	constructor(id: Int, type: Int, payload: ByteArray?) {
+		this.id = id
+		this.type = type
+		this.payload = payload
+	}
 
-    public RCONPacket(ByteBuffer buffer) throws IOException {
-        int size = buffer.getInt();
+	constructor(buffer: ByteBuffer?) {
+		val size: Int = buffer.getInt()
+		id = buffer.getInt()
+		type = buffer.getInt()
+		payload = ByteArray(size - 10)
+		buffer.get(payload)
+		buffer.get(ByteArray(2))
+	}
 
-        this.id = buffer.getInt();
-        this.type = buffer.getInt();
-        this.payload = new byte[size - 10];
-        buffer.get(this.payload);
+	fun toBuffer(): ByteBuffer? {
+		val buffer: ByteBuffer = ByteBuffer.allocate(payload!!.size + 14)
+		buffer.order(ByteOrder.LITTLE_ENDIAN)
+		buffer.putInt(payload.size + 10)
+		buffer.putInt(id)
+		buffer.putInt(type)
+		buffer.put(payload)
+		buffer.put(0.toByte())
+		buffer.put(0.toByte())
+		buffer.flip()
+		return buffer
+	}
 
-        buffer.get(new byte[2]);
-    }
-
-    public ByteBuffer toBuffer() {
-        ByteBuffer buffer = ByteBuffer.allocate(this.payload.length + 14);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-
-        buffer.putInt(this.payload.length + 10);
-        buffer.putInt(this.id);
-        buffer.putInt(this.type);
-        buffer.put(this.payload);
-
-        buffer.put((byte) 0);
-        buffer.put((byte) 0);
-
-        buffer.flip();
-        return buffer;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public int getType() {
-        return type;
-    }
-
-    public byte[] getPayload() {
-        return payload;
-    }
 }

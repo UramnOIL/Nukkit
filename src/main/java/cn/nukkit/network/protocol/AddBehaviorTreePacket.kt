@@ -1,25 +1,27 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class AddBehaviorTreePacket extends DataPacket {
+class AddBehaviorTreePacket : DataPacket() {
+	var unknown: String? = null
 
-    public String unknown;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.ADD_BEHAVIOR_TREE_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.ADD_BEHAVIOR_TREE_PACKET;
-    }
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putString(unknown);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putString(unknown)
+	}
 }

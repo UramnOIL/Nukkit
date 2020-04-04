@@ -1,69 +1,65 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import kotlin.jvm.Throws
 
-import java.io.IOException;
+class FloatTag : NumberTag<Float?> {
+	override var data = 0f
 
-public class FloatTag extends NumberTag<Float> {
-    public float data;
+	@Override
+	fun getData(): Float {
+		return data
+	}
 
-    @Override
-    public Float getData() {
-        return data;
-    }
+	@Override
+	fun setData(data: Float?) {
+		this.data = data ?: 0
+	}
 
-    @Override
-    public void setData(Float data) {
-        this.data = data == null ? 0 : data;
-    }
+	constructor(name: String?) : super(name) {}
+	constructor(name: String?, data: Float) : super(name) {
+		this.data = data
+	}
 
-    public FloatTag(String name) {
-        super(name);
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		dos.writeFloat(data)
+	}
 
-    public FloatTag(String name, float data) {
-        super(name);
-        this.data = data;
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		data = dis.readFloat()
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        dos.writeFloat(data);
-    }
+	@Override
+	override fun parseValue(): Float {
+		return data
+	}
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-        data = dis.readFloat();
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_Float
 
-    @Override
-    public Float parseValue() {
-        return this.data;
-    }
+	@Override
+	override fun toString(): String {
+		return "FloatTag " + this.getName().toString() + " (data: " + data.toString() + ")"
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_Float;
-    }
+	@Override
+	override fun copy(): Tag {
+		return FloatTag(getName(), data)
+	}
 
-    @Override
-    public String toString() {
-        return "FloatTag " + this.getName() + " (data: " + data + ")";
-    }
-
-    @Override
-    public Tag copy() {
-        return new FloatTag(getName(), data);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            FloatTag o = (FloatTag) obj;
-            return data == o.data;
-        }
-        return false;
-    }
-
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val o = obj as FloatTag
+			return data == o.data
+		}
+		return false
+	}
 }

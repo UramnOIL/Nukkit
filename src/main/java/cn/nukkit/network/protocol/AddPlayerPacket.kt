@@ -1,72 +1,77 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.entity.data.EntityMetadata;
-import cn.nukkit.item.Item;
-import cn.nukkit.utils.Binary;
-import lombok.ToString;
-
-import java.util.UUID;
+import cn.nukkit.entity.data.EntityMetadata
+import cn.nukkit.item.Item
+import cn.nukkit.utils.Binary
+import lombok.ToString
+import java.util.UUID
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class AddPlayerPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.ADD_PLAYER_PACKET;
+class AddPlayerPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var uuid: UUID? = null
+	var username: String? = null
+	var entityUniqueId: Long = 0
+	var entityRuntimeId: Long = 0
+	var platformChatId: String? = ""
+	var x = 0f
+	var y = 0f
+	var z = 0f
+	var speedX = 0f
+	var speedY = 0f
+	var speedZ = 0f
+	var pitch = 0f
+	var yaw = 0f
+	var item: Item? = null
+	var metadata: EntityMetadata? = EntityMetadata()
 
-    public UUID uuid;
-    public String username;
-    public long entityUniqueId;
-    public long entityRuntimeId;
-    public String platformChatId = "";
-    public float x;
-    public float y;
-    public float z;
-    public float speedX;
-    public float speedY;
-    public float speedZ;
-    public float pitch;
-    public float yaw;
-    public Item item;
-    public EntityMetadata metadata = new EntityMetadata();
-    //public EntityLink links = new EntityLink[0];
-    public String deviceId = "";
-    public int buildPlatform = -1;
+	//public EntityLink links = new EntityLink[0];
+	var deviceId: String? = ""
+	var buildPlatform = -1
 
-    @Override
-    public void decode() {
+	@Override
+	override fun decode() {
+	}
 
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putUUID(uuid)
+		this.putString(username)
+		this.putEntityUniqueId(entityUniqueId)
+		this.putEntityRuntimeId(entityRuntimeId)
+		this.putString(platformChatId)
+		this.putVector3f(x, y, z)
+		this.putVector3f(speedX, speedY, speedZ)
+		this.putLFloat(pitch)
+		this.putLFloat(yaw) //TODO headrot
+		this.putLFloat(yaw)
+		this.putSlot(item)
+		this.put(Binary.writeMetadata(metadata))
+		this.putUnsignedVarInt(0) //TODO: Adventure settings
+		this.putUnsignedVarInt(0)
+		this.putUnsignedVarInt(0)
+		this.putUnsignedVarInt(0)
+		this.putUnsignedVarInt(0)
+		this.putLLong(entityUniqueId)
+		this.putUnsignedVarInt(0) //TODO: Entity links
+		this.putString(deviceId)
+		this.putLInt(buildPlatform)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putUUID(this.uuid);
-        this.putString(this.username);
-        this.putEntityUniqueId(this.entityUniqueId);
-        this.putEntityRuntimeId(this.entityRuntimeId);
-        this.putString(this.platformChatId);
-        this.putVector3f(this.x, this.y, this.z);
-        this.putVector3f(this.speedX, this.speedY, this.speedZ);
-        this.putLFloat(this.pitch);
-        this.putLFloat(this.yaw); //TODO headrot
-        this.putLFloat(this.yaw);
-        this.putSlot(this.item);
-        this.put(Binary.writeMetadata(this.metadata));
-        this.putUnsignedVarInt(0); //TODO: Adventure settings
-        this.putUnsignedVarInt(0);
-        this.putUnsignedVarInt(0);
-        this.putUnsignedVarInt(0);
-        this.putUnsignedVarInt(0);
-        this.putLLong(entityUniqueId);
-        this.putUnsignedVarInt(0); //TODO: Entity links
-        this.putString(deviceId);
-        this.putLInt(buildPlatform);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.ADD_PLAYER_PACKET
+	}
 }

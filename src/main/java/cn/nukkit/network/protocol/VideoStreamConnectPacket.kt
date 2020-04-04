@@ -1,32 +1,36 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class VideoStreamConnectPacket extends DataPacket {
+class VideoStreamConnectPacket : DataPacket() {
+	var address: String? = null
+	var screenshotFrequency = 0f
+	var action: Byte = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.VIDEO_STREAM_CONNECT_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public static final byte ACTION_OPEN = 0;
-    public static final byte ACTION_CLOSE = 1;
+	@Override
+	override fun decode() {
+	}
 
-    public String address;
-    public float screenshotFrequency;
-    public byte action;
+	@Override
+	override fun encode() {
+		this.putString(address)
+		this.putLFloat(screenshotFrequency)
+		this.putByte(action)
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
-    @Override
-    public void decode() {
-    }
-
-    @Override
-    public void encode() {
-        this.putString(address);
-        this.putLFloat(screenshotFrequency);
-        this.putByte(action);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.VIDEO_STREAM_CONNECT_PACKET
+		const val ACTION_OPEN: Byte = 0
+		const val ACTION_CLOSE: Byte = 1
+	}
 }

@@ -1,38 +1,38 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class UpdateSoftEnumPacket extends DataPacket {
+class UpdateSoftEnumPacket : DataPacket() {
+	val values: Array<String?>? = arrayOfNulls<String?>(0)
+	var name: String? = ""
+	var type: Type? = Type.SET
 
-    public final String[] values = new String[0];
-    public String name = "";
-    public Type type = Type.SET;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.UPDATE_SOFT_ENUM_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.UPDATE_SOFT_ENUM_PACKET;
-    }
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putString(name)
+		this.putUnsignedVarInt(values!!.size)
+		for (value in values!!) {
+			this.putString(value)
+		}
+		this.putByte(type!!.ordinal() as Byte)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putString(name);
-        this.putUnsignedVarInt(values.length);
-
-        for (String value : values) {
-            this.putString(value);
-        }
-        this.putByte((byte) type.ordinal());
-    }
-
-    public enum Type {
-        ADD,
-        REMOVE,
-        SET
-    }
+	enum class Type {
+		ADD, REMOVE, SET
+	}
 }

@@ -1,18 +1,18 @@
-package cn.nukkit.metadata;
+package cn.nukkit.metadata
 
-import cn.nukkit.entity.Entity;
+import cn.nukkit.entity.Entity
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class EntityMetadataStore extends MetadataStore {
-
-    @Override
-    protected String disambiguate(Metadatable entity, String metadataKey) {
-        if (!(entity instanceof Entity)) {
-            throw new IllegalArgumentException("Argument must be an Entity instance");
-        }
-        return ((Entity) entity).getId() + ":" + metadataKey;
-    }
+class EntityMetadataStore : MetadataStore() {
+	@Override
+	protected override fun disambiguate(entity: Metadatable?, metadataKey: String?): String? {
+		if (entity !is Entity) {
+			throw IllegalArgumentException("Argument must be an Entity instance")
+		}
+		return (entity as Entity?).getId().toString() + ":" + metadataKey
+	}
 }

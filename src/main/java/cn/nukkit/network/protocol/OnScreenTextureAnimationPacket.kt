@@ -1,22 +1,26 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-public class OnScreenTextureAnimationPacket extends DataPacket {
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
-    public int effectId;
+class OnScreenTextureAnimationPacket : DataPacket() {
+	var effectId = 0
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.ON_SCREEN_TEXTURE_ANIMATION_PACKET;
-    }
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.ON_SCREEN_TEXTURE_ANIMATION_PACKET
+	}
 
-    @Override
-    public void decode() {
-        this.effectId = this.getLInt();
-    }
+	@Override
+	override fun decode() {
+		effectId = this.getLInt()
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putLInt(this.effectId);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putLInt(effectId)
+	}
 }

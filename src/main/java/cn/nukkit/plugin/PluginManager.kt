@@ -1,647 +1,555 @@
-package cn.nukkit.plugin;
+package cn.nukkit.plugin
 
-import cn.nukkit.Server;
-import cn.nukkit.command.PluginCommand;
-import cn.nukkit.command.SimpleCommandMap;
-import cn.nukkit.event.*;
-import cn.nukkit.permission.Permissible;
-import cn.nukkit.permission.Permission;
-import cn.nukkit.utils.MainLogger;
-import cn.nukkit.utils.PluginException;
-import cn.nukkit.utils.Utils;
-import co.aikar.timings.Timing;
-import co.aikar.timings.Timings;
-
-import java.io.File;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.regex.Pattern;
+import cn.nukkit.Server
+import cn.nukkit.command.PluginCommand
+import cn.nukkit.command.SimpleCommandMap
+import cn.nukkit.event.*
+import cn.nukkit.permission.Permissible
+import cn.nukkit.permission.Permission
+import cn.nukkit.utils.PluginException
+import cn.nukkit.utils.Utils
+import co.aikar.timings.Timings
+import java.io.File
+import java.lang.Class
+import java.lang.Deprecated
+import java.lang.Exception
+import java.lang.IllegalAccessException
+import java.lang.IllegalArgumentException
+import java.lang.Integer
+import java.lang.NoClassDefFoundError
+import java.lang.NoSuchMethodException
+import java.lang.NullPointerException
+import java.lang.RuntimeException
+import java.lang.reflect.Constructor
+import java.lang.reflect.Method
+import java.util.*
+import java.util.regex.Pattern
+import kotlin.Boolean
+import kotlin.String
+import kotlin.Throwable
+import kotlin.also
+import kotlin.arrayOf
+import kotlin.collections.HashMap
+import kotlin.require
 
 /**
  * @author MagicDroidX
  */
-public class PluginManager {
-
-    private final Server server;
-
-    private final SimpleCommandMap commandMap;
-
-    protected final Map<String, Plugin> plugins = new LinkedHashMap<>();
-
-    protected final Map<String, Permission> permissions = new HashMap<>();
-
-    protected final Map<String, Permission> defaultPerms = new HashMap<>();
-
-    protected final Map<String, Permission> defaultPermsOp = new HashMap<>();
-
-    protected final Map<String, Set<Permissible>> permSubs = new HashMap<>();
-
-    protected final Set<Permissible> defSubs = Collections.newSetFromMap(new WeakHashMap<>());
-
-    protected final Set<Permissible> defSubsOp = Collections.newSetFromMap(new WeakHashMap<>());
-
-    protected final Map<String, PluginLoader> fileAssociations = new HashMap<>();
-
-    public PluginManager(Server server, SimpleCommandMap commandMap) {
-        this.server = server;
-        this.commandMap = commandMap;
-    }
-
-    public Plugin getPlugin(String name) {
-        if (this.plugins.containsKey(name)) {
-            return this.plugins.get(name);
-        }
-        return null;
-    }
-
-    public boolean registerInterface(Class<? extends PluginLoader> loaderClass) {
-        if (loaderClass != null) {
-            try {
-                Constructor constructor = loaderClass.getDeclaredConstructor(Server.class);
-                constructor.setAccessible(true);
-                this.fileAssociations.put(loaderClass.getName(), (PluginLoader) constructor.newInstance(this.server));
-                return true;
-            } catch (Exception e) {
-                return false;
-            }
-        }
-        return false;
-    }
-
-    public Map<String, Plugin> getPlugins() {
-        return plugins;
-    }
-
-    public Plugin loadPlugin(String path) {
-        return this.loadPlugin(path, null);
-    }
-
-    public Plugin loadPlugin(File file) {
-        return this.loadPlugin(file, null);
-    }
-
-    public Plugin loadPlugin(String path, Map<String, PluginLoader> loaders) {
-        return this.loadPlugin(new File(path), loaders);
-    }
-
-    public Plugin loadPlugin(File file, Map<String, PluginLoader> loaders) {
-        for (PluginLoader loader : (loaders == null ? this.fileAssociations : loaders).values()) {
-            for (Pattern pattern : loader.getPluginFilters()) {
-                if (pattern.matcher(file.getName()).matches()) {
-                    PluginDescription description = loader.getPluginDescription(file);
-                    if (description != null) {
-                        try {
-                            Plugin plugin = loader.loadPlugin(file);
-                            if (plugin != null) {
-                                this.plugins.put(plugin.getDescription().getName(), plugin);
-
-                                List<PluginCommand> pluginCommands = this.parseYamlCommands(plugin);
-
-                                if (!pluginCommands.isEmpty()) {
-                                    this.commandMap.registerAll(plugin.getDescription().getName(), pluginCommands);
-                                }
-
-                                return plugin;
-                            }
-                        } catch (Exception e) {
-                            Server.getInstance().getLogger().critical("Could not load plugin", e);
-                            return null;
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    public Map<String, Plugin> loadPlugins(String dictionary) {
-        return this.loadPlugins(new File(dictionary));
-    }
-
-    public Map<String, Plugin> loadPlugins(File dictionary) {
-        return this.loadPlugins(dictionary, null);
-    }
-
-    public Map<String, Plugin> loadPlugins(String dictionary, List<String> newLoaders) {
-        return this.loadPlugins(new File(dictionary), newLoaders);
-    }
-
-    public Map<String, Plugin> loadPlugins(File dictionary, List<String> newLoaders) {
-        return this.loadPlugins(dictionary, newLoaders, false);
-    }
-
-    public Map<String, Plugin> loadPlugins(File dictionary, List<String> newLoaders, boolean includeDir) {
-        if (dictionary.isDirectory()) {
-            Map<String, File> plugins = new LinkedHashMap<>();
-            Map<String, Plugin> loadedPlugins = new LinkedHashMap<>();
-            Map<String, List<String>> dependencies = new LinkedHashMap<>();
-            Map<String, List<String>> softDependencies = new LinkedHashMap<>();
-            Map<String, PluginLoader> loaders = new LinkedHashMap<>();
-            if (newLoaders != null) {
-                for (String key : newLoaders) {
-                    if (this.fileAssociations.containsKey(key)) {
-                        loaders.put(key, this.fileAssociations.get(key));
-                    }
-                }
-            } else {
-                loaders = this.fileAssociations;
-            }
-
-            for (final PluginLoader loader : loaders.values()) {
-                for (File file : dictionary.listFiles((dir, name) -> {
-                    for (Pattern pattern : loader.getPluginFilters()) {
-                        if (pattern.matcher(name).matches()) {
-                            return true;
-                        }
-                    }
-                    return false;
-                })) {
-                    if (file.isDirectory() && !includeDir) {
-                        continue;
-                    }
-                    try {
-                        PluginDescription description = loader.getPluginDescription(file);
-                        if (description != null) {
-                            String name = description.getName();
-
-                            if (plugins.containsKey(name) || this.getPlugin(name) != null) {
-                                this.server.getLogger().error(this.server.getLanguage().translateString("nukkit.plugin.duplicateError", name));
-                                continue;
-                            }
-
-                            boolean compatible = false;
-
-                            for (String version : description.getCompatibleAPIs()) {
-
-                                try {
-                                    //Check the format: majorVersion.minorVersion.patch
-                                    if (!Pattern.matches("[0-9]\\.[0-9]\\.[0-9]", version)) {
-                                        throw new IllegalArgumentException();
-                                    }
-                                } catch (NullPointerException | IllegalArgumentException e) {
-                                    this.server.getLogger().error(this.server.getLanguage().translateString("nukkit.plugin.loadError", new String[]{name, "Wrong API format"}));
-                                    continue;
-                                }
-
-                                String[] versionArray = version.split("\\.");
-                                String[] apiVersion = this.server.getApiVersion().split("\\.");
-
-                                //Completely different API version
-                                if (!Objects.equals(Integer.valueOf(versionArray[0]), Integer.valueOf(apiVersion[0]))) {
-                                    continue;
-                                }
-
-                                //If the plugin requires new API features, being backwards compatible
-                                if (Integer.valueOf(versionArray[1]) > Integer.valueOf(apiVersion[1])) {
-                                    continue;
-                                }
-
-                                compatible = true;
-                                break;
-                            }
-
-                            if (!compatible) {
-                                this.server.getLogger().error(this.server.getLanguage().translateString("nukkit.plugin.loadError", new String[]{name, "%nukkit.plugin.incompatibleAPI"}));
-                            }
-
-                            plugins.put(name, file);
-
-                            softDependencies.put(name, description.getSoftDepend());
-
-                            dependencies.put(name, description.getDepend());
-
-                            for (String before : description.getLoadBefore()) {
-                                if (softDependencies.containsKey(before)) {
-                                    softDependencies.get(before).add(name);
-                                } else {
-                                    List<String> list = new ArrayList<>();
-                                    list.add(name);
-                                    softDependencies.put(before, list);
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        this.server.getLogger().error(this.server.getLanguage().translateString("nukkit.plugin" +
-                                ".fileError", file.getName(), dictionary.toString(), Utils
-                                .getExceptionMessage(e)));
-                        MainLogger logger = this.server.getLogger();
-                        if (logger != null) {
-                            logger.logException(e);
-                        }
-                    }
-                }
-            }
-
-            while (!plugins.isEmpty()) {
-                boolean missingDependency = true;
-                for (String name : new ArrayList<>(plugins.keySet())) {
-                    File file = plugins.get(name);
-                    if (dependencies.containsKey(name)) {
-                        for (String dependency : new ArrayList<>(dependencies.get(name))) {
-                            if (loadedPlugins.containsKey(dependency) || this.getPlugin(dependency) != null) {
-                                dependencies.get(name).remove(dependency);
-                            } else if (!plugins.containsKey(dependency)) {
-                                this.server.getLogger().critical(this.server.getLanguage().translateString("nukkit" +
-                                        ".plugin.loadError", new String[]{name, "%nukkit.plugin.unknownDependency"}));
-                                break;
-                            }
-                        }
-
-                        if (dependencies.get(name).isEmpty()) {
-                            dependencies.remove(name);
-                        }
-                    }
-
-                    if (softDependencies.containsKey(name)) {
-                        for (String dependency : new ArrayList<>(softDependencies.get(name))) {
-                            if (loadedPlugins.containsKey(dependency) || this.getPlugin(dependency) != null) {
-                                softDependencies.get(name).remove(dependency);
-                            }
-                        }
-
-                        if (softDependencies.get(name).isEmpty()) {
-                            softDependencies.remove(name);
-                        }
-                    }
-
-                    if (!dependencies.containsKey(name) && !softDependencies.containsKey(name)) {
-                        plugins.remove(name);
-                        missingDependency = false;
-                        Plugin plugin = this.loadPlugin(file, loaders);
-                        if (plugin != null) {
-                            loadedPlugins.put(name, plugin);
-                        } else {
-                            this.server.getLogger().critical(this.server.getLanguage().translateString("nukkit.plugin.genericLoadError", name));
-                        }
-                    }
-                }
-
-                if (missingDependency) {
-                    for (String name : new ArrayList<>(plugins.keySet())) {
-                        File file = plugins.get(name);
-                        if (!dependencies.containsKey(name)) {
-                            softDependencies.remove(name);
-                            plugins.remove(name);
-                            missingDependency = false;
-                            Plugin plugin = this.loadPlugin(file, loaders);
-                            if (plugin != null) {
-                                loadedPlugins.put(name, plugin);
-                            } else {
-                                this.server.getLogger().critical(this.server.getLanguage().translateString("nukkit.plugin.genericLoadError", name));
-                            }
-                        }
-                    }
-
-                    if (missingDependency) {
-                        for (String name : plugins.keySet()) {
-                            this.server.getLogger().critical(this.server.getLanguage().translateString("nukkit.plugin.loadError", new String[]{name, "%nukkit.plugin.circularDependency"}));
-                        }
-                        plugins.clear();
-                    }
-                }
-            }
-
-            return loadedPlugins;
-        } else {
-            return new HashMap<>();
-        }
-    }
-
-    public Permission getPermission(String name) {
-        if (this.permissions.containsKey(name)) {
-            return this.permissions.get(name);
-        }
-        return null;
-    }
-
-    public boolean addPermission(Permission permission) {
-        if (!this.permissions.containsKey(permission.getName())) {
-            this.permissions.put(permission.getName(), permission);
-            this.calculatePermissionDefault(permission);
-
-            return true;
-        }
-
-        return false;
-    }
-
-    public void removePermission(String name) {
-        this.permissions.remove(name);
-    }
-
-    public void removePermission(Permission permission) {
-        this.removePermission(permission.getName());
-    }
-
-    public Map<String, Permission> getDefaultPermissions(boolean op) {
-        if (op) {
-            return this.defaultPermsOp;
-        } else {
-            return this.defaultPerms;
-        }
-    }
-
-    public void recalculatePermissionDefaults(Permission permission) {
-        if (this.permissions.containsKey(permission.getName())) {
-            this.defaultPermsOp.remove(permission.getName());
-            this.defaultPerms.remove(permission.getName());
-            this.calculatePermissionDefault(permission);
-        }
-    }
-
-    private void calculatePermissionDefault(Permission permission) {
-        Timings.permissionDefaultTimer.startTiming();
-        if (permission.getDefault().equals(Permission.DEFAULT_OP) || permission.getDefault().equals(Permission.DEFAULT_TRUE)) {
-            this.defaultPermsOp.put(permission.getName(), permission);
-            this.dirtyPermissibles(true);
-        }
-
-        if (permission.getDefault().equals(Permission.DEFAULT_NOT_OP) || permission.getDefault().equals(Permission.DEFAULT_TRUE)) {
-            this.defaultPerms.put(permission.getName(), permission);
-            this.dirtyPermissibles(false);
-        }
-        Timings.permissionDefaultTimer.startTiming();
-    }
-
-    private void dirtyPermissibles(boolean op) {
-        for (Permissible p : this.getDefaultPermSubscriptions(op)) {
-            p.recalculatePermissions();
-        }
-    }
-
-    public void subscribeToPermission(String permission, Permissible permissible) {
-        if (!this.permSubs.containsKey(permission)) {
-            this.permSubs.put(permission, Collections.newSetFromMap(new WeakHashMap<>()));
-        }
-        this.permSubs.get(permission).add(permissible);
-    }
-
-    public void unsubscribeFromPermission(String permission, Permissible permissible) {
-        if (this.permSubs.containsKey(permission)) {
-            this.permSubs.get(permission).remove(permissible);
-            if (this.permSubs.get(permission).size() == 0) {
-                this.permSubs.remove(permission);
-            }
-        }
-    }
-
-    public Set<Permissible> getPermissionSubscriptions(String permission) {
-        if (this.permSubs.containsKey(permission)) {
-            return new HashSet<>(this.permSubs.get(permission));
-        }
-        return new HashSet<>();
-    }
-
-    public void subscribeToDefaultPerms(boolean op, Permissible permissible) {
-        if (op) {
-            this.defSubsOp.add(permissible);
-        } else {
-            this.defSubs.add(permissible);
-        }
-    }
-
-    public void unsubscribeFromDefaultPerms(boolean op, Permissible permissible) {
-        if (op) {
-            this.defSubsOp.remove(permissible);
-        } else {
-            this.defSubs.remove(permissible);
-        }
-    }
-
-    public Set<Permissible> getDefaultPermSubscriptions(boolean op) {
-        if (op) {
-            return new HashSet<>(this.defSubsOp);
-        } else {
-            return new HashSet<>(this.defSubs);
-        }
-    }
-
-    public Map<String, Permission> getPermissions() {
-        return permissions;
-    }
-
-    public boolean isPluginEnabled(Plugin plugin) {
-        if (plugin != null && this.plugins.containsKey(plugin.getDescription().getName())) {
-            return plugin.isEnabled();
-        } else {
-            return false;
-        }
-    }
-
-    public void enablePlugin(Plugin plugin) {
-        if (!plugin.isEnabled()) {
-            try {
-                for (Permission permission : plugin.getDescription().getPermissions()) {
-                    this.addPermission(permission);
-                }
-                plugin.getPluginLoader().enablePlugin(plugin);
-            } catch (Throwable e) {
-                MainLogger logger = this.server.getLogger();
-                if (logger != null) {
-                    logger.logException(new RuntimeException(e));
-                }
-                this.disablePlugin(plugin);
-            }
-        }
-    }
-
-    protected List<PluginCommand> parseYamlCommands(Plugin plugin) {
-        List<PluginCommand> pluginCmds = new ArrayList<>();
-
-        for (Map.Entry entry : plugin.getDescription().getCommands().entrySet()) {
-            String key = (String) entry.getKey();
-            Object data = entry.getValue();
-            if (key.contains(":")) {
-                this.server.getLogger().critical(this.server.getLanguage().translateString("nukkit.plugin.commandError", new String[]{key, plugin.getDescription().getFullName()}));
-                continue;
-            }
-            if (data instanceof Map) {
-                PluginCommand newCmd = new PluginCommand<>(key, plugin);
-
-                if (((Map) data).containsKey("description")) {
-                    newCmd.setDescription((String) ((Map) data).get("description"));
-                }
-
-                if (((Map) data).containsKey("usage")) {
-                    newCmd.setUsage((String) ((Map) data).get("usage"));
-                }
-
-                if (((Map) data).containsKey("aliases")) {
-                    Object aliases = ((Map) data).get("aliases");
-                    if (aliases instanceof List) {
-                        List<String> aliasList = new ArrayList<>();
-                        for (String alias : (List<String>) aliases) {
-                            if (alias.contains(":")) {
-                                this.server.getLogger().critical(this.server.getLanguage().translateString("nukkit.plugin.aliasError", new String[]{alias, plugin.getDescription().getFullName()}));
-                                continue;
-                            }
-                            aliasList.add(alias);
-                        }
-
-                        newCmd.setAliases(aliasList.toArray(new String[0]));
-                    }
-                }
-
-                if (((Map) data).containsKey("permission")) {
-                    newCmd.setPermission((String) ((Map) data).get("permission"));
-                }
-
-                if (((Map) data).containsKey("permission-message")) {
-                    newCmd.setPermissionMessage((String) ((Map) data).get("permission-message"));
-                }
-
-                pluginCmds.add(newCmd);
-            }
-        }
-
-        return pluginCmds;
-    }
-
-    public void disablePlugins() {
-        ListIterator<Plugin> plugins = new ArrayList<>(this.getPlugins().values()).listIterator(this.getPlugins().size());
-
-        while (plugins.hasPrevious()) {
-            this.disablePlugin(plugins.previous());
-        }
-    }
-
-    public void disablePlugin(Plugin plugin) {
-        if (plugin.isEnabled()) {
-            try {
-                plugin.getPluginLoader().disablePlugin(plugin);
-            } catch (Exception e) {
-                MainLogger logger = this.server.getLogger();
-                if (logger != null) {
-                    logger.logException(e);
-                }
-            }
-
-            this.server.getScheduler().cancelTask(plugin);
-            HandlerList.unregisterAll(plugin);
-            for (Permission permission : plugin.getDescription().getPermissions()) {
-                this.removePermission(permission);
-            }
-        }
-    }
-
-    public void clearPlugins() {
-        this.disablePlugins();
-        this.plugins.clear();
-        this.fileAssociations.clear();
-        this.permissions.clear();
-        this.defaultPerms.clear();
-        this.defaultPermsOp.clear();
-    }
-
-    public void callEvent(Event event) {
-        try {
-            for (RegisteredListener registration : getEventListeners(event.getClass()).getRegisteredListeners()) {
-                if (!registration.getPlugin().isEnabled()) {
-                    continue;
-                }
-
-                try {
-                    registration.callEvent(event);
-                } catch (Exception e) {
-                    this.server.getLogger().critical(this.server.getLanguage().translateString("nukkit.plugin.eventError", event.getEventName(), registration.getPlugin().getDescription().getFullName(), e.getMessage(), registration.getListener().getClass().getName()));
-                    this.server.getLogger().logException(e);
-                }
-            }
-        } catch (IllegalAccessException e) {
-            this.server.getLogger().logException(e);
-        }
-    }
-
-    public void registerEvents(Listener listener, Plugin plugin) {
-        if (!plugin.isEnabled()) {
-            throw new PluginException("Plugin attempted to register " + listener.getClass().getName() + " while not enabled");
-        }
-
-        Map<Class<? extends Event>, Set<RegisteredListener>> ret = new HashMap<>();
-        Set<Method> methods;
-        try {
-            Method[] publicMethods = listener.getClass().getMethods();
-            Method[] privateMethods = listener.getClass().getDeclaredMethods();
-            methods = new HashSet<>(publicMethods.length + privateMethods.length, 1.0f);
-            Collections.addAll(methods, publicMethods);
-            Collections.addAll(methods, privateMethods);
-        } catch (NoClassDefFoundError e) {
-            plugin.getLogger().error("Plugin " + plugin.getDescription().getFullName() + " has failed to register events for " + listener.getClass() + " because " + e.getMessage() + " does not exist.");
-            return;
-        }
-
-        for (final Method method : methods) {
-            final EventHandler eh = method.getAnnotation(EventHandler.class);
-            if (eh == null) continue;
-            if (method.isBridge() || method.isSynthetic()) {
-                continue;
-            }
-            final Class<?> checkClass;
-
-            if (method.getParameterTypes().length != 1 || !Event.class.isAssignableFrom(checkClass = method.getParameterTypes()[0])) {
-                plugin.getLogger().error(plugin.getDescription().getFullName() + " attempted to register an invalid EventHandler method signature \"" + method.toGenericString() + "\" in " + listener.getClass());
-                continue;
-            }
-
-            final Class<? extends Event> eventClass = checkClass.asSubclass(Event.class);
-            method.setAccessible(true);
-
-            for (Class<?> clazz = eventClass; Event.class.isAssignableFrom(clazz); clazz = clazz.getSuperclass()) {
-                // This loop checks for extending deprecated events
-                if (clazz.getAnnotation(Deprecated.class) != null) {
-                    if (Boolean.valueOf(String.valueOf(this.server.getConfig("settings.deprecated-verbpse", true)))) {
-                        this.server.getLogger().warning(this.server.getLanguage().translateString("nukkit.plugin.deprecatedEvent", plugin.getName(), clazz.getName(), listener.getClass().getName() + "." + method.getName() + "()"));
-                    }
-                    break;
-                }
-            }
-            this.registerEvent(eventClass, listener, eh.priority(), new MethodEventExecutor(method), plugin, eh.ignoreCancelled());
-        }
-    }
-
-    public void registerEvent(Class<? extends Event> event, Listener listener, EventPriority priority, EventExecutor executor, Plugin plugin) throws PluginException {
-        this.registerEvent(event, listener, priority, executor, plugin, false);
-    }
-
-    public void registerEvent(Class<? extends Event> event, Listener listener, EventPriority priority, EventExecutor executor, Plugin plugin, boolean ignoreCancelled) throws PluginException {
-        if (!plugin.isEnabled()) {
-            throw new PluginException("Plugin attempted to register " + event + " while not enabled");
-        }
-
-        try {
-            Timing timing = Timings.getPluginEventTiming(event, listener, executor, plugin);
-            this.getEventListeners(event).register(new RegisteredListener(listener, executor, priority, plugin, ignoreCancelled, timing));
-        } catch (IllegalAccessException e) {
-            Server.getInstance().getLogger().logException(e);
-        }
-    }
-
-    private HandlerList getEventListeners(Class<? extends Event> type) throws IllegalAccessException {
-        try {
-            Method method = getRegistrationClass(type).getDeclaredMethod("getHandlers");
-            method.setAccessible(true);
-            return (HandlerList) method.invoke(null);
-        } catch (NullPointerException e) {
-            throw new IllegalArgumentException("getHandlers method in " + type.getName() + " was not static!");
-        } catch (Exception e) {
-            throw new IllegalAccessException(Utils.getExceptionMessage(e));
-        }
-    }
-
-    private Class<? extends Event> getRegistrationClass(Class<? extends Event> clazz) throws IllegalAccessException {
-        try {
-            clazz.getDeclaredMethod("getHandlers");
-            return clazz;
-        } catch (NoSuchMethodException e) {
-            if (clazz.getSuperclass() != null
-                    && !clazz.getSuperclass().equals(Event.class)
-                    && Event.class.isAssignableFrom(clazz.getSuperclass())) {
-                return getRegistrationClass(clazz.getSuperclass().asSubclass(Event.class));
-            } else {
-                throw new IllegalAccessException("Unable to find handler list for event " + clazz.getName() + ". Static getHandlers method required!");
-            }
-        }
-    }
+open class PluginManager(private val server: Server, private val commandMap: SimpleCommandMap) {
+	private val mutablePlugins: MutableMap<String, Plugin> = LinkedHashMap()
+	val plugins
+		get() = mutablePlugins
+	protected val permissions: MutableMap<String, Permission> = HashMap()
+	protected val defaultPerms: MutableMap<String, Permission> = HashMap()
+	protected val defaultPermsOp: MutableMap<String, Permission> = HashMap()
+	protected val permSubs: MutableMap<String, MutableSet<Permissible>> = HashMap()
+	protected val defSubs = Collections.newSetFromMap(WeakHashMap<Permissible, Boolean>())
+	protected val defSubsOp = Collections.newSetFromMap(WeakHashMap<Permissible, Boolean>())
+	protected val fileAssociations: MutableMap<String, PluginLoader> = HashMap()
+
+	fun registerInterface(loaderClass: Class<out PluginLoader?>?): Boolean {
+		return if (loaderClass != null) {
+			try {
+				val constructor: Constructor<*> = loaderClass.getDeclaredConstructor(Server::class.java)
+				constructor.isAccessible = true
+				fileAssociations[loaderClass.name] = constructor.newInstance(server) as PluginLoader
+				true
+			} catch (e: Exception) {
+				false
+			}
+		} else false
+	}
+
+	fun loadPlugin(path: String, loaders: Map<String, PluginLoader>? = null) = this.loadPlugin(File(path), loaders)
+
+	fun loadPlugin(file: File, loaders: Map<String, PluginLoader>? = null): Plugin? {
+		(loaders ?: fileAssociations).values.forEach { loader ->
+			loader.pluginFilters.forEach filters@ { pattern ->
+				if (!pattern.matcher(file.name).matches()) {
+					return@filters
+				}
+				val description = loader.getPluginDescription(file) ?: return@filters
+				try {
+					val plugin = loader.loadPlugin(file) ?: return@filters
+					mutablePlugins[plugin.description.name] = plugin
+					val pluginCommands = parseYamlCommands(plugin)
+					if (pluginCommands.isNotEmpty()) {
+						commandMap.registerAll(plugin.description.name, pluginCommands)
+					}
+					return plugin
+				} catch (e: Exception) {
+					Server.instance.logger.critical("Could not load plugin", e)
+					return null
+				}
+			}
+		}
+		return null
+	}
+
+	fun loadPlugins(dictionary: String): Map<String, Plugin> {
+		return this.loadPlugins(File(dictionary))
+	}
+
+	fun loadPlugins(dictionary: String, newLoaders: List<String>): Map<String, Plugin> {
+		return this.loadPlugins(File(dictionary), newLoaders)
+	}
+
+	@JvmOverloads
+	fun loadPlugins(dictionary: File, newLoaders: List<String>? = null, includeDir: Boolean = false): Map<String, Plugin> {
+		if (dictionary.isDirectory) {
+			return HashMap()
+		}
+		val plugins: MutableMap<String, File> = LinkedHashMap()
+		val loadedPlugins: MutableMap<String, Plugin> = LinkedHashMap()
+		val dependencies: MutableMap<String, MutableList<String>> = LinkedHashMap()
+		val softDependencies: MutableMap<String, MutableList<String>> = LinkedHashMap()
+		var loaders: MutableMap<String, PluginLoader> = LinkedHashMap()
+		if (newLoaders != null) {
+			for (loader in newLoaders) {
+				if (fileAssociations.containsKey(loader)) {
+					loaders[loader] = fileAssociations[loader]!!
+				}
+			}
+		} else {
+			loaders = fileAssociations
+		}
+		for(loader in loaders.values) {
+			val filteredFiles = dictionary.listFiles { _, name ->
+				for (pattern in loader.pluginFilters) {
+					if (pattern.matcher(name).matches()) {
+						return@listFiles true
+					}
+				}
+				false
+			}!!
+			for (file in filteredFiles) {
+				if (file.isDirectory && !includeDir) {
+					continue
+				}
+				try {
+					val description = loader.getPluginDescription(file) ?: continue
+					val name = description.name
+					if (plugins.containsKey(name) || plugins[name] != null) {
+						server.logger.error(server.language.translateString("nukkit.plugin.duplicateError", name))
+						continue
+					}
+					var compatible = false
+					for (version in description.apis) {
+						try {
+							//Check the format: majorVersion.minorVersion.patch
+							require(Pattern.matches("[0-9]\\.[0-9]\\.[0-9]", version))
+						} catch (e: NullPointerException) {
+							server.logger.error(server.language.translateString("nukkit.plugin.loadError", arrayOf(name, "Wrong API format")))
+							continue
+						} catch (e: IllegalArgumentException) {
+							server.logger.error(server.language.translateString("nukkit.plugin.loadError", arrayOf(name, "Wrong API format")))
+							continue
+						}
+						val versionArray = version.split("\\.").toTypedArray()
+						val apiVersion = server.apiVersion.split("\\.").toTypedArray()
+
+						//Completely different API version
+						if (Integer.valueOf(versionArray[0]) != Integer.valueOf(apiVersion[0])) {
+							continue
+						}
+
+						//If the plugin requires new API features, being backwards compatible
+						if (Integer.valueOf(versionArray[1]) > Integer.valueOf(apiVersion[1])) {
+							continue
+						}
+
+						compatible = true
+						break
+					}
+
+					if (!compatible) {
+						server.logger.error(server.language.translateString("nukkit.plugin.loadError", arrayOf(name, "%nukkit.plugin.incompatibleAPI")))
+					}
+
+					plugins[name] = file
+					softDependencies[name] = description.softDepend
+					dependencies[name] = description.depend
+					for (before in description.loadBefore) {
+						if (softDependencies.containsKey(before)) {
+							softDependencies[before]!!.add(name)
+						} else {
+							val list = mutableListOf<String>()
+							list.add(name)
+							softDependencies[before] = list
+						}
+					}
+				} catch (e: Exception) {
+					server.logger.error(server.language.translateString("nukkit.plugin" +
+							".fileError", file.name, dictionary.toString(), Utils
+							.getExceptionMessage(e)))
+					val logger = server.logger
+					logger.logException(e)
+				}
+			}
+		}
+		while (!plugins.isEmpty()) {
+			var missingDependency = true
+			for ((name, file) in plugins) {
+				if (dependencies.containsKey(name)) {
+					for (dependency in dependencies[name]!!) {
+						if (loadedPlugins.containsKey(dependency) || plugins[dependency] != null) {
+							dependencies[name]!!.remove(dependency)
+						} else if (!plugins.containsKey(dependency)) {
+							server.logger.critical(server.language.translateString("nukkit" +
+									".plugin.loadError", arrayOf(name, "%nukkit.plugin.unknownDependency")))
+							break
+						}
+					}
+					if (dependencies[name]!!.isEmpty()) {
+						dependencies.remove(name)
+					}
+				}
+				if (softDependencies.containsKey(name)) {
+					for (dependency in softDependencies[name]!!) {
+						if (loadedPlugins.containsKey(dependency) || plugins[dependency] != null) {
+							softDependencies[name]!!.remove(dependency)
+						}
+					}
+					if (softDependencies[name]!!.isEmpty()) {
+						softDependencies.remove(name)
+					}
+				}
+				if (!dependencies.containsKey(name) && !softDependencies.containsKey(name)) {
+					plugins.remove(name)
+					missingDependency = false
+					val plugin = this.loadPlugin(file, loaders)
+					if (plugin != null) {
+						loadedPlugins[name] = plugin
+					} else {
+						server.logger.critical(server.language.translateString("nukkit.plugin.genericLoadError", name))
+					}
+				}
+			}
+			if (missingDependency) {
+				for ((name, file) in plugins) {
+					if (!dependencies.containsKey(name)) {
+						softDependencies.remove(name)
+						plugins.remove(name)
+						missingDependency = false
+						val plugin = this.loadPlugin(file, loaders)
+						if (plugin != null) {
+							loadedPlugins[name] = plugin
+						} else {
+							server.logger.critical(server.language.translateString("nukkit.plugin.genericLoadError", name))
+						}
+					}
+				}
+				if (missingDependency) {
+					for (name in plugins.keys) {
+						server.logger.critical(server.language.translateString("nukkit.plugin.loadError", arrayOf(name, "%nukkit.plugin.circularDependency")))
+					}
+					plugins.clear()
+				}
+			}
+		}
+
+		return loadedPlugins
+	}
+
+	fun getPermission(name: String): Permission? {
+		return if (permissions.containsKey(name)) {
+			permissions[name]
+		} else null
+	}
+
+	fun addPermission(permission: Permission?): Boolean {
+		if (!permissions.containsKey(permission!!.name)) {
+			permissions[permission.name] = permission
+			calculatePermissionDefault(permission)
+			return true
+		}
+		return false
+	}
+
+	fun removePermission(name: String) {
+		permissions.remove(name)
+	}
+
+	fun removePermission(permission: Permission?) {
+		this.removePermission(permission!!.name)
+	}
+
+	fun getDefaultPermissions(op: Boolean): Map<String, Permission> {
+		return if (op) {
+			defaultPermsOp
+		} else {
+			defaultPerms
+		}
+	}
+
+	fun recalculatePermissionDefaults(permission: Permission) {
+		if (permissions.containsKey(permission.name)) {
+			defaultPermsOp.remove(permission.name)
+			defaultPerms.remove(permission.name)
+			calculatePermissionDefault(permission)
+		}
+	}
+
+	private fun calculatePermissionDefault(permission: Permission?) {
+		Timings.permissionDefaultTimer.startTiming()
+		if (permission!!.default == Permission.DEFAULT_OP || permission.default == Permission.DEFAULT_TRUE) {
+			defaultPermsOp[permission.name] = permission
+			dirtyPermissibles(true)
+		}
+		if (permission.default == Permission.DEFAULT_NOT_OP || permission.default == Permission.DEFAULT_TRUE) {
+			defaultPerms[permission.name] = permission
+			dirtyPermissibles(false)
+		}
+		Timings.permissionDefaultTimer.startTiming()
+	}
+
+	private fun dirtyPermissibles(op: Boolean) {
+		for (p in getDefaultPermSubscriptions(op)) {
+			p.recalculatePermissions()
+		}
+	}
+
+	fun subscribeToPermission(permission: String, permissible: Permissible) {
+		if (!permSubs.containsKey(permission)) {
+			permSubs[permission] = Collections.newSetFromMap(WeakHashMap())
+		}
+		permSubs[permission]!!.add(permissible)
+	}
+
+	fun unsubscribeFromPermission(permission: String, permissible: Permissible) {
+		if (permSubs.containsKey(permission)) {
+			permSubs[permission]!!.remove(permissible)
+			if (permSubs[permission]!!.size == 0) {
+				permSubs.remove(permission)
+			}
+		}
+	}
+
+	fun getPermissionSubscriptions(permission: String): Set<Permissible> {
+		return permSubs[permission] ?: HashSet()
+	}
+
+	fun subscribeToDefaultPerms(op: Boolean, permissible: Permissible) {
+		if (op) {
+			defSubsOp.add(permissible)
+		} else {
+			defSubs.add(permissible)
+		}
+	}
+
+	fun unsubscribeFromDefaultPerms(op: Boolean, permissible: Permissible) {
+		if (op) {
+			defSubsOp.remove(permissible)
+		} else {
+			defSubs.remove(permissible)
+		}
+	}
+
+	fun getDefaultPermSubscriptions(op: Boolean): Set<Permissible> {
+		return if (op) {
+			HashSet(defSubsOp)
+		} else {
+			HashSet(defSubs)
+		}
+	}
+
+	fun isPluginEnabled(plugin: Plugin): Boolean {
+		return if (mutablePlugins.containsKey(plugin.description.name)) {
+			plugin.isEnabled
+		} else {
+			false
+		}
+	}
+
+	fun enablePlugin(plugin: Plugin) {
+		if (!plugin.isEnabled) {
+			try {
+				plugin.description.permissions.forEach {
+					addPermission(it)
+				}
+				plugin.pluginLoader.enablePlugin(plugin)
+			} catch (e: Throwable) {
+				server.logger.logException(RuntimeException(e))
+				disablePlugin(plugin)
+			}
+		}
+	}
+
+	protected fun parseYamlCommands(plugin: Plugin): List<PluginCommand<*>> {
+		val pluginCmds: MutableList<PluginCommand<*>> = ArrayList()
+		for ((key1, value) in plugin.description.commands) {
+			val key = key1 as String
+			if (key.contains(":")) {
+				server.logger.critical(server.language.translateString("nukkit.plugin.commandError", arrayOf(key, plugin.description.fullName)))
+				continue
+			}
+			if (value is Map<*, *>) {
+				val newCmd: PluginCommand<*> = PluginCommand(key, plugin)
+				if (value.containsKey("description")) {
+					newCmd.description = (value["description"] as String?)!!
+				}
+				if (value.containsKey("usage")) {
+					newCmd.usage = (value["usage"] as String?)!!
+				}
+				if (value.containsKey("aliases")) {
+					val aliases = value["aliases"]
+					if (aliases is List<*>) {
+						val aliasList: MutableList<String?> = ArrayList()
+						for (alias in aliases as List<String>) {
+							if (alias.contains(":")) {
+								server.logger.critical(server.language.translateString("nukkit.plugin.aliasError", arrayOf(alias, plugin.description!!.fullName)))
+								continue
+							}
+							aliasList.add(alias)
+						}
+						newCmd.setAliases(aliasList.toTypedArray())
+					}
+				}
+				if (value.containsKey("permission")) {
+					newCmd.permission = value["permission"] as String?
+				}
+				if (value.containsKey("permission-message")) {
+					newCmd.permissionMessage = value["permission-message"] as String?
+				}
+				pluginCmds.add(newCmd)
+			}
+		}
+		return pluginCmds
+	}
+
+	fun disablePlugins() {
+		val plugins: ListIterator<Plugin> = ArrayList(mutablePlugins.values).listIterator(mutablePlugins.size)
+		while (plugins.hasPrevious()) {
+			disablePlugin(plugins.previous())
+		}
+	}
+
+	fun disablePlugin(plugin: Plugin) {
+		if (plugin.isEnabled) {
+			try {
+				plugin.pluginLoader.disablePlugin(plugin)
+			} catch (e: Exception) {
+				val logger = server.logger
+				logger.logException(e)
+			}
+			server.scheduler.cancelTask(plugin)
+			HandlerList.unregisterAll(plugin)
+			plugin.description.permissions.forEach {
+				this.removePermission(it)
+			}
+		}
+	}
+
+	fun clearPlugins() {
+		disablePlugins()
+		mutablePlugins.clear()
+		fileAssociations.clear()
+		permissions.clear()
+		defaultPerms.clear()
+		defaultPermsOp.clear()
+	}
+
+	fun callEvent(event: Event) {
+		try {
+			for (registration in getEventListeners(event.javaClass).registeredListeners) {
+				if (!registration.plugin.isEnabled) {
+					continue
+				}
+				try {
+					registration.callEvent(event)
+				} catch (e: Exception) {
+					server.logger.critical(server.language.translateString("nukkit.plugin.eventError", event.getEventName(), registration.plugin.description.fullName, e.message, registration.listener.javaClass.name))
+					server.logger.logException(e)
+				}
+			}
+		} catch (e: IllegalAccessException) {
+			server.logger.logException(e)
+		}
+	}
+
+	fun registerEvents(listener: Listener, plugin: Plugin) {
+		if (!plugin.isEnabled) {
+			throw PluginException("Plugin attempted to register " + listener.javaClass.name + " while not enabled")
+		}
+		val ret: Map<Class<out Event>, Set<RegisteredListener>> = HashMap()
+		val methods: Set<Method>
+		try {
+			val publicMethods = listener.javaClass.methods
+			val privateMethods = listener.javaClass.declaredMethods
+			methods = HashSet(publicMethods.size + privateMethods.size, 1.0f)
+			Collections.addAll(methods, *publicMethods)
+			Collections.addAll(methods, *privateMethods)
+		} catch (e: NoClassDefFoundError) {
+			plugin.logger.error("Plugin " + plugin.description.fullName + " has failed to register events for " + listener.javaClass + " because " + e.message + " does not exist.")
+			return
+		}
+		for (method in methods) {
+			val eh = method.getAnnotation(EventHandler::class.java) ?: continue
+			if (method.isBridge || method.isSynthetic) {
+				continue
+			}
+			var checkClass: Class<*>
+			if (method.parameterTypes.size != 1 || !Event::class.java.isAssignableFrom(method.parameterTypes[0].also { checkClass = it })) {
+				plugin.logger!!.error(plugin.description.fullName + " attempted to register an invalid EventHandler method signature \"" + method.toGenericString() + "\" in " + listener.javaClass)
+				continue
+			}
+			val eventClass = checkClass.asSubclass(Event::class.java)
+			method.isAccessible = true
+			var clazz: Class<*> = eventClass
+			while (Event::class.java.isAssignableFrom(clazz)) {
+
+				// This loop checks for extending deprecated events
+				if (clazz.getAnnotation(Deprecated::class.java) != null) {
+					if (java.lang.Boolean.valueOf(server.config.toString())) {
+						server.logger.warning(server.language.translateString("nukkit.plugin.deprecatedEvent", plugin.name, clazz.name, listener.javaClass.name + "." + method.name + "()"))
+					}
+					break
+				}
+				clazz = clazz.superclass
+			}
+			registerEvent(eventClass, listener, eh.priority, MethodEventExecutor(method), plugin, eh.ignoreCancelled)
+		}
+	}
+
+	@JvmOverloads
+	@Throws(PluginException::class)
+	inline fun <reified T : Event> registerEvent(listener: Listener, priority: EventPriority?, executor: EventExecutor, plugin: Plugin, ignoreCancelled: Boolean = false) {
+		if (!plugin.isEnabled) {
+			throw PluginException("Plugin attempted to register $event while not enabled")
+		}
+		try {
+			val timing = Timings.getPluginEventTiming(T::class, listener, executor, plugin)
+			getEventListeners(event).register(RegisteredListener(listener, executor, priority, plugin, ignoreCancelled, timing))
+		} catch (e: IllegalAccessException) {
+			Server.instance!!.logger.logException(e)
+		}
+	}
+
+	@Throws(IllegalAccessException::class)
+	private fun getEventListeners(clazz: KClass<Event>): HandlerList {
+		return try {
+			val method = getRegistrationClass(T::class.java).getDeclaredMethod("getHandlers")
+			method.isAccessible = true
+			method.invoke(null) as HandlerList
+		} catch (e: NullPointerException) {
+			throw IllegalArgumentException("getHandlers method in ${T::class.simpleName} was not static!")
+		} catch (e: Exception) {
+			throw IllegalAccessException(Utils.getExceptionMessage(e))
+		}
+	}
+
+	private fun getRegistrationClass(clazz: KClass<out Event>): Class<out Event?> {
+		return try {
+			clazz.getDeclaredMethod("getHandlers")
+			clazz
+		} catch (e: NoSuchMethodException) {
+			if (clazz.superclass != null && clazz.superclass != Event::class.java
+					&& Event::class.java.isAssignableFrom(clazz.superclass)) {
+				getRegistrationClass(clazz.superclass.asSubclass(Event::class.java))
+			} else {
+				throw IllegalAccessException("Unable to find handler list for event " + clazz.name + ". Static getHandlers method required!")
+			}
+		}
+	}
+
 }

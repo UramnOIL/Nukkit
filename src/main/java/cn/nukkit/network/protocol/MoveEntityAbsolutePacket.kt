@@ -1,61 +1,67 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.Vector3f;
-import lombok.ToString;
+import cn.nukkit.math.Vector3f
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class MoveEntityAbsolutePacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.MOVE_ENTITY_ABSOLUTE_PACKET;
+class MoveEntityAbsolutePacket : DataPacket() {
+	var eid: Long = 0
+	var x = 0.0
+	var y = 0.0
+	var z = 0.0
+	var yaw = 0.0
+	var headYaw = 0.0
+	var pitch = 0.0
+	var onGround = false
+	var teleport = false
 
-    public long eid;
-    public double x;
-    public double y;
-    public double z;
-    public double yaw;
-    public double headYaw;
-    public double pitch;
-    public boolean onGround;
-    public boolean teleport;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun decode() {
+		eid = this.getEntityRuntimeId()
+		val flags: Int = this.getByte()
+		teleport = flags and 0x01 != 0
+		onGround = flags and 0x02 != 0
+		val v: Vector3f = this.getVector3f()
+		x = v.x
+		y = v.y
+		z = v.z
+		pitch = this.getByte() * (360.0 / 256.0)
+		headYaw = this.getByte() * (360.0 / 256.0)
+		yaw = this.getByte() * (360.0 / 256.0)
+	}
 
-    @Override
-    public void decode() {
-        this.eid = this.getEntityRuntimeId();
-        int flags = this.getByte();
-        teleport = (flags & 0x01) != 0;
-        onGround = (flags & 0x02) != 0;
-        Vector3f v = this.getVector3f();
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        this.pitch = this.getByte() * (360d / 256d);
-        this.headYaw = this.getByte() * (360d / 256d);
-        this.yaw = this.getByte() * (360d / 256d);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityRuntimeId(eid)
+		var flags: Byte = 0
+		if (teleport) {
+			flags = flags or 0x01
+		}
+		if (onGround) {
+			flags = flags or 0x02
+		}
+		this.putByte(flags)
+		this.putVector3f(x.toFloat(), y.toFloat(), z.toFloat())
+		this.putByte((pitch / (360.0 / 256.0)).toByte())
+		this.putByte((headYaw / (360.0 / 256.0)).toByte())
+		this.putByte((yaw / (360.0 / 256.0)).toByte())
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityRuntimeId(this.eid);
-        byte flags = 0;
-        if (teleport) {
-            flags |= 0x01;
-        }
-        if (onGround) {
-            flags |= 0x02;
-        }
-        this.putByte(flags);
-        this.putVector3f((float) this.x, (float) this.y, (float) this.z);
-        this.putByte((byte) (this.pitch / (360d / 256d)));
-        this.putByte((byte) (this.headYaw / (360d / 256d)));
-        this.putByte((byte) (this.yaw / (360d / 256d)));
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.MOVE_ENTITY_ABSOLUTE_PACKET
+	}
 }

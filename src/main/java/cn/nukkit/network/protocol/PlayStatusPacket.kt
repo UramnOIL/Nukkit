@@ -1,40 +1,42 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Created on 15-10-13.
  */
 @ToString
-public class PlayStatusPacket extends DataPacket {
+class PlayStatusPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public static final byte NETWORK_ID = ProtocolInfo.PLAY_STATUS_PACKET;
+	var status = 0
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun decode() {
+	}
 
-    public static final int LOGIN_SUCCESS = 0;
-    public static final int LOGIN_FAILED_CLIENT = 1;
-    public static final int LOGIN_FAILED_SERVER = 2;
-    public static final int PLAYER_SPAWN = 3;
-    public static final int LOGIN_FAILED_INVALID_TENANT = 4;
-    public static final int LOGIN_FAILED_VANILLA_EDU = 5;
-    public static final int LOGIN_FAILED_EDU_VANILLA = 6;
-    public static final int LOGIN_FAILED_SERVER_FULL = 7;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putInt(status)
+	}
 
-    public int status;
-
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putInt(this.status);
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.PLAY_STATUS_PACKET
+		const val LOGIN_SUCCESS = 0
+		const val LOGIN_FAILED_CLIENT = 1
+		const val LOGIN_FAILED_SERVER = 2
+		const val PLAYER_SPAWN = 3
+		const val LOGIN_FAILED_INVALID_TENANT = 4
+		const val LOGIN_FAILED_VANILLA_EDU = 5
+		const val LOGIN_FAILED_EDU_VANILLA = 6
+		const val LOGIN_FAILED_SERVER_FULL = 7
+	}
 }

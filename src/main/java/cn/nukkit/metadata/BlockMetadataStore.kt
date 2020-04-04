@@ -1,75 +1,75 @@
-package cn.nukkit.metadata;
+package cn.nukkit.metadata
 
-import cn.nukkit.block.Block;
-import cn.nukkit.level.Level;
-import cn.nukkit.plugin.Plugin;
-
-import java.util.List;
+import cn.nukkit.block.Block
+import cn.nukkit.level.Level
+import cn.nukkit.plugin.Plugin
+import java.util.List
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class BlockMetadataStore extends MetadataStore {
-    private final Level owningLevel;
+class BlockMetadataStore(owningLevel: Level?) : MetadataStore() {
+	private val owningLevel: Level?
 
-    public BlockMetadataStore(Level owningLevel) {
-        this.owningLevel = owningLevel;
-    }
+	@Override
+	protected override fun disambiguate(block: Metadatable?, metadataKey: String?): String? {
+		if (block !is Block) {
+			throw IllegalArgumentException("Argument must be a Block instance")
+		}
+		return (block as Block?).x.toString() + ":" + (block as Block?).y + ":" + (block as Block?).z + ":" + metadataKey
+	}
 
-    @Override
-    protected String disambiguate(Metadatable block, String metadataKey) {
-        if (!(block instanceof Block)) {
-            throw new IllegalArgumentException("Argument must be a Block instance");
-        }
-        return ((Block) block).x + ":" + ((Block) block).y + ":" + ((Block) block).z + ":" + metadataKey;
-    }
+	@Override
+	override fun getMetadata(block: Object?, metadataKey: String?): List<MetadataValue?>? {
+		if (block !is Block) {
+			throw IllegalArgumentException("Object must be a Block")
+		}
+		return if ((block as Block?).getLevel() === owningLevel) {
+			super.getMetadata(block, metadataKey)
+		} else {
+			throw IllegalStateException("Block does not belong to world " + owningLevel.getName())
+		}
+	}
 
-    @Override
-    public List<MetadataValue> getMetadata(Object block, String metadataKey) {
-        if (!(block instanceof Block)) {
-            throw new IllegalArgumentException("Object must be a Block");
-        }
-        if (((Block) block).getLevel() == this.owningLevel) {
-            return super.getMetadata(block, metadataKey);
-        } else {
-            throw new IllegalStateException("Block does not belong to world " + this.owningLevel.getName());
-        }
-    }
+	@Override
+	override fun hasMetadata(block: Object?, metadataKey: String?): Boolean {
+		if (block !is Block) {
+			throw IllegalArgumentException("Object must be a Block")
+		}
+		return if ((block as Block?).getLevel() === owningLevel) {
+			super.hasMetadata(block, metadataKey)
+		} else {
+			throw IllegalStateException("Block does not belong to world " + owningLevel.getName())
+		}
+	}
 
-    @Override
-    public boolean hasMetadata(Object block, String metadataKey) {
-        if (!(block instanceof Block)) {
-            throw new IllegalArgumentException("Object must be a Block");
-        }
-        if (((Block) block).getLevel() == this.owningLevel) {
-            return super.hasMetadata(block, metadataKey);
-        } else {
-            throw new IllegalStateException("Block does not belong to world " + this.owningLevel.getName());
-        }
-    }
+	@Override
+	override fun removeMetadata(block: Object?, metadataKey: String?, owningPlugin: Plugin?) {
+		if (block !is Block) {
+			throw IllegalArgumentException("Object must be a Block")
+		}
+		if ((block as Block?).getLevel() === owningLevel) {
+			super.removeMetadata(block, metadataKey, owningPlugin)
+		} else {
+			throw IllegalStateException("Block does not belong to world " + owningLevel.getName())
+		}
+	}
 
-    @Override
-    public void removeMetadata(Object block, String metadataKey, Plugin owningPlugin) {
-        if (!(block instanceof Block)) {
-            throw new IllegalArgumentException("Object must be a Block");
-        }
-        if (((Block) block).getLevel() == this.owningLevel) {
-            super.removeMetadata(block, metadataKey, owningPlugin);
-        } else {
-            throw new IllegalStateException("Block does not belong to world " + this.owningLevel.getName());
-        }
-    }
+	@Override
+	override fun setMetadata(block: Object?, metadataKey: String?, newMetadataValue: MetadataValue?) {
+		if (block !is Block) {
+			throw IllegalArgumentException("Object must be a Block")
+		}
+		if ((block as Block?).getLevel() === owningLevel) {
+			super.setMetadata(block, metadataKey, newMetadataValue)
+		} else {
+			throw IllegalStateException("Block does not belong to world " + owningLevel.getName())
+		}
+	}
 
-    @Override
-    public void setMetadata(Object block, String metadataKey, MetadataValue newMetadataValue) {
-        if (!(block instanceof Block)) {
-            throw new IllegalArgumentException("Object must be a Block");
-        }
-        if (((Block) block).getLevel() == this.owningLevel) {
-            super.setMetadata(block, metadataKey, newMetadataValue);
-        } else {
-            throw new IllegalStateException("Block does not belong to world " + this.owningLevel.getName());
-        }
-    }
+	init {
+		this.owningLevel = owningLevel
+	}
 }

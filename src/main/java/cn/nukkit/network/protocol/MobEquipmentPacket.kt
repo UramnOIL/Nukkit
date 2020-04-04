@@ -1,43 +1,49 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.item.Item;
-import lombok.ToString;
+import cn.nukkit.item.Item
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class MobEquipmentPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.MOB_EQUIPMENT_PACKET;
+class MobEquipmentPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var eid: Long = 0
+	var item: Item? = null
+	var inventorySlot = 0
+	var hotbarSlot = 0
+	var windowId = 0
 
-    public long eid;
-    public Item item;
-    public int inventorySlot;
-    public int hotbarSlot;
-    public int windowId;
+	@Override
+	override fun decode() {
+		eid = this.getEntityRuntimeId() //EntityRuntimeID
+		item = this.getSlot()
+		inventorySlot = this.getByte()
+		hotbarSlot = this.getByte()
+		windowId = this.getByte()
+	}
 
-    @Override
-    public void decode() {
-        this.eid = this.getEntityRuntimeId(); //EntityRuntimeID
-        this.item = this.getSlot();
-        this.inventorySlot = this.getByte();
-        this.hotbarSlot = this.getByte();
-        this.windowId = this.getByte();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityRuntimeId(eid) //EntityRuntimeID
+		this.putSlot(item)
+		this.putByte(inventorySlot.toByte())
+		this.putByte(hotbarSlot.toByte())
+		this.putByte(windowId.toByte())
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityRuntimeId(this.eid); //EntityRuntimeID
-        this.putSlot(this.item);
-        this.putByte((byte) this.inventorySlot);
-        this.putByte((byte) this.hotbarSlot);
-        this.putByte((byte) this.windowId);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.MOB_EQUIPMENT_PACKET
+	}
 }

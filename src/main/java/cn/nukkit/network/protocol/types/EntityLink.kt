@@ -1,20 +1,16 @@
-package cn.nukkit.network.protocol.types;
+package cn.nukkit.network.protocol.types
 
-public class EntityLink {
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
-    public static final byte TYPE_REMOVE = 0;
-    public static final byte TYPE_RIDER = 1;
-    public static final byte TYPE_PASSENGER = 2;
+class EntityLink(var fromEntityUniquieId: Long, var toEntityUniquieId: Long, var type: Byte, var immediate: Boolean) {
 
-    public long fromEntityUniquieId;
-    public long toEntityUniquieId;
-    public byte type;
-    public boolean immediate;
+	companion object {
+		const val TYPE_REMOVE: Byte = 0
+		const val TYPE_RIDER: Byte = 1
+		const val TYPE_PASSENGER: Byte = 2
+	}
 
-    public EntityLink(long fromEntityUniquieId, long toEntityUniquieId, byte type, boolean immediate) {
-        this.fromEntityUniquieId = fromEntityUniquieId;
-        this.toEntityUniquieId = toEntityUniquieId;
-        this.type = type;
-        this.immediate = immediate;
-    }
 }

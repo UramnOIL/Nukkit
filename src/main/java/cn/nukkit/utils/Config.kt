@@ -1,574 +1,502 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import cn.nukkit.Server;
-import cn.nukkit.scheduler.FileWriteTask;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.regex.Pattern;
+import cn.nukkit.Server
+import cn.nukkit.scheduler.FileWriteTask
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.Yaml
+import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.regex.Pattern
 
 /**
  * author: MagicDroidX
  * Nukkit
  */
-public class Config {
-
-    public static final int DETECT = -1; //Detect by file extension
-    public static final int PROPERTIES = 0; // .properties
-    public static final int CNF = Config.PROPERTIES; // .cnf
-    public static final int JSON = 1; // .js, .json
-    public static final int YAML = 2; // .yml, .yaml
-    //public static final int EXPORT = 3; // .export, .xport
-    //public static final int SERIALIZED = 4; // .sl
-    public static final int ENUM = 5; // .txt, .list, .enum
-    public static final int ENUMERATION = Config.ENUM;
-
-    //private LinkedHashMap<String, Object> config = new LinkedHashMap<>();
-    private ConfigSection config = new ConfigSection();
-    private File file;
-    private boolean correct = false;
-    private int type = Config.DETECT;
-
-    public static final Map<String, Integer> format = new TreeMap<>();
-
-    static {
-        format.put("properties", Config.PROPERTIES);
-        format.put("con", Config.PROPERTIES);
-        format.put("conf", Config.PROPERTIES);
-        format.put("config", Config.PROPERTIES);
-        format.put("js", Config.JSON);
-        format.put("json", Config.JSON);
-        format.put("yml", Config.YAML);
-        format.put("yaml", Config.YAML);
-        //format.put("sl", Config.SERIALIZED);
-        //format.put("serialize", Config.SERIALIZED);
-        format.put("txt", Config.ENUM);
-        format.put("list", Config.ENUM);
-        format.put("enum", Config.ENUM);
-    }
-
-    /**
-     * Constructor for Config instance with undefined file object
-     *
-     * @param type - Config type
-     */
-    public Config(int type) {
-        this.type = type;
-        this.correct = true;
-        this.config = new ConfigSection();
-    }
-
-    /**
-     * Constructor for Config (YAML) instance with undefined file object
-     */
-    public Config() {
-        this(Config.YAML);
-    }
-
-    public Config(String file) {
-        this(file, Config.DETECT);
-    }
-
-    public Config(File file) {
-        this(file.toString(), Config.DETECT);
-    }
-
-    public Config(String file, int type) {
-        this(file, type, new ConfigSection());
-    }
-
-    public Config(File file, int type) {
-        this(file.toString(), type, new ConfigSection());
-    }
-
-    @Deprecated
-    public Config(String file, int type, LinkedHashMap<String, Object> defaultMap) {
-        this.load(file, type, new ConfigSection(defaultMap));
-    }
-
-    public Config(String file, int type, ConfigSection defaultMap) {
-        this.load(file, type, defaultMap);
-    }
-
-    public Config(File file, int type, ConfigSection defaultMap) {
-        this.load(file.toString(), type, defaultMap);
-    }
-
-    @Deprecated
-    public Config(File file, int type, LinkedHashMap<String, Object> defaultMap) {
-        this(file.toString(), type, new ConfigSection(defaultMap));
-    }
-
-    public void reload() {
-        this.config.clear();
-        this.correct = false;
-        //this.load(this.file.toString());
-        if (this.file == null) throw new IllegalStateException("Failed to reload Config. File object is undefined.");
-        this.load(this.file.toString(), this.type);
-
-    }
-
-    public boolean load(String file) {
-        return this.load(file, Config.DETECT);
-    }
-
-    public boolean load(String file, int type) {
-        return this.load(file, type, new ConfigSection());
-    }
-
-    @SuppressWarnings("unchecked")
-    public boolean load(String file, int type, ConfigSection defaultMap) {
-        this.correct = true;
-        this.type = type;
-        this.file = new File(file);
-        if (!this.file.exists()) {
-            try {
-                this.file.getParentFile().mkdirs();
-                this.file.createNewFile();
-            } catch (IOException e) {
-                MainLogger.getLogger().error("Could not create Config " + this.file.toString(), e);
-            }
-            this.config = defaultMap;
-            this.save();
-        } else {
-            if (this.type == Config.DETECT) {
-                String extension = "";
-                if (this.file.getName().lastIndexOf(".") != -1 && this.file.getName().lastIndexOf(".") != 0) {
-                    extension = this.file.getName().substring(this.file.getName().lastIndexOf(".") + 1);
-                }
-                if (format.containsKey(extension)) {
-                    this.type = format.get(extension);
-                } else {
-                    this.correct = false;
-                }
-            }
-            if (this.correct) {
-                String content = "";
-                try {
-                    content = Utils.readFile(this.file);
-                } catch (IOException e) {
-                    Server.getInstance().getLogger().logException(e);
-                }
-                this.parseContent(content);
-                if (!this.correct) return false;
-                if (this.setDefault(defaultMap) > 0) {
-                    this.save();
-                }
-            } else {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public boolean load(InputStream inputStream) {
-        if (inputStream == null) return false;
-        if (this.correct) {
-            String content;
-            try {
-                content = Utils.readFile(inputStream);
-            } catch (IOException e) {
-                Server.getInstance().getLogger().logException(e);
-                return false;
-            }
-            this.parseContent(content);
-        }
-        return correct;
-    }
-
-    public boolean check() {
-        return this.correct;
-    }
-
-    public boolean isCorrect() {
-        return correct;
-    }
-
-    /**
-     * Save configuration into provided file. Internal file object will be set to new file.
-     *
-     * @param file
-     * @param async
-     * @return
-     */
-    public boolean save(File file, boolean async) {
-        this.file = file;
-        return save(async);
-    }
-
-    public boolean save(File file) {
-        this.file = file;
-        return save();
-    }
-
-    public boolean save() {
-        return this.save(false);
-    }
-
-    public boolean save(Boolean async) {
-        if (this.file == null) throw new IllegalStateException("Failed to save Config. File object is undefined.");
-        if (this.correct) {
-            String content = "";
-            switch (this.type) {
-                case Config.PROPERTIES:
-                    content = this.writeProperties();
-                    break;
-                case Config.JSON:
-                    content = new GsonBuilder().setPrettyPrinting().create().toJson(this.config);
-                    break;
-                case Config.YAML:
-                    DumperOptions dumperOptions = new DumperOptions();
-                    dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-                    Yaml yaml = new Yaml(dumperOptions);
-                    content = yaml.dump(this.config);
-                    break;
-                case Config.ENUM:
-                    for (Object o : this.config.entrySet()) {
-                        Map.Entry entry = (Map.Entry) o;
-                        content += entry.getKey() + "\r\n";
-                    }
-                    break;
-            }
-            if (async) {
-                Server.getInstance().getScheduler().scheduleAsyncTask(new FileWriteTask(this.file, content));
-
-            } else {
-                try {
-                    Utils.writeFile(this.file, content);
-                } catch (IOException e) {
-                    Server.getInstance().getLogger().logException(e);
-                }
-            }
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    public void set(final String key, Object value) {
-        this.config.set(key, value);
-    }
-
-    public Object get(String key) {
-        return this.get(key, null);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T get(String key, T defaultValue) {
-        return this.correct ? this.config.get(key, defaultValue) : defaultValue;
-    }
-
-    public ConfigSection getSection(String key) {
-        return this.correct ? this.config.getSection(key) : new ConfigSection();
-    }
-
-    public boolean isSection(String key) {
-        return config.isSection(key);
-    }
-
-    public ConfigSection getSections(String key) {
-        return this.correct ? this.config.getSections(key) : new ConfigSection();
-    }
-
-    public ConfigSection getSections() {
-        return this.correct ? this.config.getSections() : new ConfigSection();
-    }
-
-    public int getInt(String key) {
-        return this.getInt(key, 0);
-    }
-
-    public int getInt(String key, int defaultValue) {
-        return this.correct ? this.config.getInt(key, defaultValue) : defaultValue;
-    }
-
-    public boolean isInt(String key) {
-        return config.isInt(key);
-    }
-
-    public long getLong(String key) {
-        return this.getLong(key, 0);
-    }
-
-    public long getLong(String key, long defaultValue) {
-        return this.correct ? this.config.getLong(key, defaultValue) : defaultValue;
-    }
-
-    public boolean isLong(String key) {
-        return config.isLong(key);
-    }
-
-    public double getDouble(String key) {
-        return this.getDouble(key, 0);
-    }
-
-    public double getDouble(String key, double defaultValue) {
-        return this.correct ? this.config.getDouble(key, defaultValue) : defaultValue;
-    }
-
-    public boolean isDouble(String key) {
-        return config.isDouble(key);
-    }
-
-    public String getString(String key) {
-        return this.getString(key, "");
-    }
-
-    public String getString(String key, String defaultValue) {
-        return this.correct ? this.config.getString(key, defaultValue) : defaultValue;
-    }
-
-    public boolean isString(String key) {
-        return config.isString(key);
-    }
-
-    public boolean getBoolean(String key) {
-        return this.getBoolean(key, false);
-    }
-
-    public boolean getBoolean(String key, boolean defaultValue) {
-        return this.correct ? this.config.getBoolean(key, defaultValue) : defaultValue;
-    }
-
-    public boolean isBoolean(String key) {
-        return config.isBoolean(key);
-    }
-
-    public List getList(String key) {
-        return this.getList(key, null);
-    }
-
-    public List getList(String key, List defaultList) {
-        return this.correct ? this.config.getList(key, defaultList) : defaultList;
-    }
-
-    public boolean isList(String key) {
-        return config.isList(key);
-    }
-
-    public List<String> getStringList(String key) {
-        return config.getStringList(key);
-    }
-
-    public List<Integer> getIntegerList(String key) {
-        return config.getIntegerList(key);
-    }
-
-    public List<Boolean> getBooleanList(String key) {
-        return config.getBooleanList(key);
-    }
-
-    public List<Double> getDoubleList(String key) {
-        return config.getDoubleList(key);
-    }
-
-    public List<Float> getFloatList(String key) {
-        return config.getFloatList(key);
-    }
-
-    public List<Long> getLongList(String key) {
-        return config.getLongList(key);
-    }
-
-    public List<Byte> getByteList(String key) {
-        return config.getByteList(key);
-    }
-
-    public List<Character> getCharacterList(String key) {
-        return config.getCharacterList(key);
-    }
-
-    public List<Short> getShortList(String key) {
-        return config.getShortList(key);
-    }
-
-    public List<Map> getMapList(String key) {
-        return config.getMapList(key);
-    }
-
-    public void setAll(LinkedHashMap<String, Object> map) {
-        this.config = new ConfigSection(map);
-    }
-
-    public void setAll(ConfigSection section) {
-        this.config = section;
-    }
-
-    public boolean exists(String key) {
-        return config.exists(key);
-    }
-
-    public boolean exists(String key, boolean ignoreCase) {
-        return config.exists(key, ignoreCase);
-    }
-
-    public void remove(String key) {
-        config.remove(key);
-    }
-
-    public Map<String, Object> getAll() {
-        return this.config.getAllMap();
-    }
-
-    /**
-     * Get root (main) config section of the Config
-     *
-     * @return
-     */
-    public ConfigSection getRootSection() {
-        return config;
-    }
-
-    public int setDefault(LinkedHashMap<String, Object> map) {
-        return setDefault(new ConfigSection(map));
-    }
-
-    public int setDefault(ConfigSection map) {
-        int size = this.config.size();
-        this.config = this.fillDefaults(map, this.config);
-        return this.config.size() - size;
-    }
-
-
-    private ConfigSection fillDefaults(ConfigSection defaultMap, ConfigSection data) {
-        for (String key : defaultMap.keySet()) {
-            if (!data.containsKey(key)) {
-                data.put(key, defaultMap.get(key));
-            }
-        }
-        return data;
-    }
-
-    private void parseList(String content) {
-        content = content.replace("\r\n", "\n");
-        for (String v : content.split("\n")) {
-            if (v.trim().isEmpty()) {
-                continue;
-            }
-            config.put(v, true);
-        }
-    }
-
-    private String writeProperties() {
-        String content = "#Properties Config file\r\n#" + new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(new Date()) + "\r\n";
-        for (Object o : this.config.entrySet()) {
-            Map.Entry entry = (Map.Entry) o;
-            Object v = entry.getValue();
-            Object k = entry.getKey();
-            if (v instanceof Boolean) {
-                v = (Boolean) v ? "on" : "off";
-            }
-            content += k + "=" + v + "\r\n";
-        }
-        return content;
-    }
-
-    private void parseProperties(String content) {
-        for (final String line : content.split("\n")) {
-            if (Pattern.compile("[a-zA-Z0-9\\-_.]*+=+[^\\r\\n]*").matcher(line).matches()) {
-                final int splitIndex = line.indexOf('=');
-                if (splitIndex == -1) {
-                    continue;
-                }
-                final String key = line.substring(0, splitIndex);
-                final String value = line.substring(splitIndex + 1);
-                final String valueLower = value.toLowerCase();
-                if (this.config.containsKey(key)) {
-                    MainLogger.getLogger().debug("[Config] Repeated property " + key + " on file " + this.file.toString());
-                }
-                switch (valueLower) {
-                    case "on":
-                    case "true":
-                    case "yes":
-                        this.config.put(key, true);
-                        break;
-                    case "off":
-                    case "false":
-                    case "no":
-                        this.config.put(key, false);
-                        break;
-                    default:
-                        this.config.put(key, value);
-                        break;
-                }
-            }
-        }
-    }
-
-    /**
-     * @deprecated use {@link #get(String)} instead
-     */
-    @Deprecated
-    public Object getNested(String key) {
-        return get(key);
-    }
-
-    /**
-     * @deprecated use {@link #get(String, Object)} instead
-     */
-    @Deprecated
-    public <T> T getNested(String key, T defaultValue) {
-        return get(key, defaultValue);
-    }
-
-    /**
-     * @deprecated use {@link #get(String)} instead
-     */
-    @Deprecated
-    @SuppressWarnings("unchecked")
-    public <T> T getNestedAs(String key, Class<T> type) {
-        return (T) get(key);
-    }
-
-    /**
-     * @deprecated use {@link #remove(String)} instead
-     */
-    @Deprecated
-    public void removeNested(String key) {
-        remove(key);
-    }
-
-    private void parseContent(String content) {
-        switch (this.type) {
-            case Config.PROPERTIES:
-                this.parseProperties(content);
-                break;
-            case Config.JSON:
-                GsonBuilder builder = new GsonBuilder();
-                Gson gson = builder.create();
-                this.config = new ConfigSection(gson.fromJson(content, new TypeToken<LinkedHashMap<String, Object>>() {
-                }.getType()));
-                break;
-            case Config.YAML:
-                DumperOptions dumperOptions = new DumperOptions();
-                dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-                Yaml yaml = new Yaml(dumperOptions);
-                this.config = new ConfigSection(yaml.loadAs(content, LinkedHashMap.class));
-                break;
-            // case Config.SERIALIZED
-            case Config.ENUM:
-                this.parseList(content);
-                break;
-            default:
-                this.correct = false;
-        }
-    }
-
-    public Set<String> getKeys() {
-        if (this.correct) return config.getKeys();
-        return new HashSet<>();
-    }
-
-    public Set<String> getKeys(boolean child) {
-        if (this.correct) return config.getKeys(child);
-        return new HashSet<>();
-    }
+class Config {
+	/**
+	 * Get root (main) config section of the Config
+	 *
+	 * @return
+	 */
+	//private LinkedHashMap<String, Object> config = new LinkedHashMap<>();
+	var rootSection = ConfigSection()
+		private set
+	private var file: File? = null
+	var isCorrect = false
+		private set
+	private var type = DETECT
+
+	companion object {
+		const val DETECT = -1 //Detect by file extension
+		const val PROPERTIES = 0 // .properties
+		const val CNF = PROPERTIES // .cnf
+		const val JSON = 1 // .js, .json
+		const val YAML = 2 // .yml, .yaml
+
+		//public static final int EXPORT = 3; // .export, .xport
+		//public static final int SERIALIZED = 4; // .sl
+		const val ENUM = 5 // .txt, .list, .enum
+		const val ENUMERATION = ENUM
+		val format: MutableMap<String, Int> = TreeMap()
+
+		init {
+			format["properties"] = PROPERTIES
+			format["con"] = PROPERTIES
+			format["conf"] = PROPERTIES
+			format["config"] = PROPERTIES
+			format["js"] = JSON
+			format["json"] = JSON
+			format["yml"] = YAML
+			format["yaml"] = YAML
+			//format.put("sl", Config.SERIALIZED);
+			//format.put("serialize", Config.SERIALIZED);
+			format["txt"] = ENUM
+			format["list"] = ENUM
+			format["enum"] = ENUM
+		}
+	}
+	/**
+	 * Constructor for Config instance with undefined file object
+	 *
+	 * @param type - Config type
+	 */
+	/**
+	 * Constructor for Config (YAML) instance with undefined file object
+	 */
+	@JvmOverloads
+	constructor(type: Int = YAML) {
+		this.type = type
+		isCorrect = true
+		rootSection = ConfigSection()
+	}
+
+	constructor(file: File) : this(file.toString(), DETECT) {}
+	constructor(file: File, type: Int) : this(file.toString(), type, ConfigSection()) {}
+
+	@Deprecated("")
+	constructor(file: String?, type: Int, defaultMap: LinkedHashMap<String?, Any>?) {
+		this.load(file, type, ConfigSection(defaultMap))
+	}
+
+	@JvmOverloads
+	constructor(file: String?, type: Int = DETECT, defaultMap: ConfigSection = ConfigSection()) {
+		this.load(file, type, defaultMap)
+	}
+
+	constructor(file: File, type: Int, defaultMap: ConfigSection) {
+		this.load(file.toString(), type, defaultMap)
+	}
+
+	@Deprecated("")
+	constructor(file: File, type: Int, defaultMap: LinkedHashMap<String?, Any>?) : this(file.toString(), type, ConfigSection(defaultMap)) {
+	}
+
+	fun reload() {
+		rootSection.clear()
+		isCorrect = false
+		//this.load(this.file.toString());
+		checkNotNull(file) { "Failed to reload Config. File object is undefined." }
+		this.load(file.toString(), type)
+	}
+
+	@JvmOverloads
+	fun load(file: String?, type: Int = DETECT, defaultMap: ConfigSection = ConfigSection()): Boolean {
+		isCorrect = true
+		this.type = type
+		this.file = File(file)
+		if (!this.file!!.exists()) {
+			try {
+				this.file!!.parentFile.mkdirs()
+				this.file!!.createNewFile()
+			} catch (e: IOException) {
+				MainLogger.getLogger().error("Could not create Config " + this.file.toString(), e)
+			}
+			rootSection = defaultMap
+			this.save()
+		} else {
+			if (this.type == DETECT) {
+				var extension = ""
+				if (this.file!!.name.lastIndexOf(".") != -1 && this.file!!.name.lastIndexOf(".") != 0) {
+					extension = this.file!!.name.substring(this.file!!.name.lastIndexOf(".") + 1)
+				}
+				if (format.containsKey(extension)) {
+					this.type = format[extension]!!
+				} else {
+					isCorrect = false
+				}
+			}
+			if (isCorrect) {
+				var content = ""
+				try {
+					content = Utils.readFile(this.file)
+				} catch (e: IOException) {
+					Server.instance.logger.logException(e)
+				}
+				parseContent(content)
+				if (!isCorrect) return false
+				if (this.setDefault(defaultMap) > 0) {
+					this.save()
+				}
+			} else {
+				return false
+			}
+		}
+		return true
+	}
+
+	fun load(inputStream: InputStream?): Boolean {
+		if (inputStream == null) return false
+		if (isCorrect) {
+			val content: String
+			content = try {
+				Utils.readFile(inputStream)
+			} catch (e: IOException) {
+				Server.instance.logger.logException(e)
+				return false
+			}
+			parseContent(content)
+		}
+		return isCorrect
+	}
+
+	fun check(): Boolean {
+		return isCorrect
+	}
+
+	/**
+	 * Save configuration into provided file. Internal file object will be set to new file.
+	 *
+	 * @param file
+	 * @param async
+	 * @return
+	 */
+	fun save(file: File?, async: Boolean): Boolean {
+		this.file = file
+		return save(async)
+	}
+
+	fun save(file: File?): Boolean {
+		this.file = file
+		return save()
+	}
+
+	@JvmOverloads
+	fun save(async: Boolean = false): Boolean {
+		checkNotNull(file) { "Failed to save Config. File object is undefined." }
+		return if (isCorrect) {
+			var content: String? = ""
+			when (type) {
+				PROPERTIES -> content = writeProperties()
+				JSON -> content = GsonBuilder().setPrettyPrinting().create().toJson(rootSection)
+				YAML -> {
+					val dumperOptions = DumperOptions()
+					dumperOptions.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+					val yaml = Yaml(dumperOptions)
+					content = yaml.dump(rootSection)
+				}
+				ENUM -> for (o in rootSection.entries) {
+					val entry = o as Map.Entry<*, *>
+					content += """
+						${entry.key.toString()}
+
+						""".trimIndent()
+				}
+			}
+			if (async) {
+				Server.instance.scheduler.scheduleAsyncTask(FileWriteTask(file!!, content!!))
+			} else {
+				try {
+					Utils.writeFile(file, content)
+				} catch (e: IOException) {
+					Server.instance.logger.logException(e)
+				}
+			}
+			true
+		} else {
+			false
+		}
+	}
+
+	operator fun set(key: String, value: Any?) {
+		rootSection[key] = value
+	}
+
+	operator fun get(key: String?): Any? {
+		return this.get<Any?>(key, null)
+	}
+
+	operator fun <T> get(key: String?, defaultValue: T): T? {
+		return if (isCorrect) rootSection[key, defaultValue] else defaultValue
+	}
+
+	fun getSection(key: String?): ConfigSection? {
+		return if (isCorrect) rootSection.getSection(key) else ConfigSection()
+	}
+
+	fun isSection(key: String?): Boolean {
+		return rootSection.isSection(key)
+	}
+
+	fun getSections(key: String?): ConfigSection? {
+		return if (isCorrect) rootSection.getSections(key) else ConfigSection()
+	}
+
+	val sections: ConfigSection?
+		get() = if (isCorrect) rootSection.sections else ConfigSection()
+
+	fun getInt(key: String?): Int {
+		return this.getInt(key, 0)
+	}
+
+	fun getInt(key: String?, defaultValue: Int): Int {
+		return if (isCorrect) rootSection.getInt(key, defaultValue) else defaultValue
+	}
+
+	fun isInt(key: String?): Boolean {
+		return rootSection.isInt(key)
+	}
+
+	fun getLong(key: String?): Long {
+		return this.getLong(key, 0)
+	}
+
+	fun getLong(key: String?, defaultValue: Long): Long {
+		return if (isCorrect) rootSection.getLong(key, defaultValue) else defaultValue
+	}
+
+	fun isLong(key: String?): Boolean {
+		return rootSection.isLong(key)
+	}
+
+	fun getDouble(key: String?): Double {
+		return this.getDouble(key, 0.0)
+	}
+
+	fun getDouble(key: String?, defaultValue: Double): Double {
+		return if (isCorrect) rootSection.getDouble(key, defaultValue) else defaultValue
+	}
+
+	fun isDouble(key: String?): Boolean {
+		return rootSection.isDouble(key)
+	}
+
+	fun getString(key: String?): String? {
+		return this.getString(key, "")
+	}
+
+	fun getString(key: String?, defaultValue: String): String? {
+		return if (isCorrect) rootSection.getString(key, defaultValue) else defaultValue
+	}
+
+	fun isString(key: String?): Boolean {
+		return rootSection.isString(key)
+	}
+
+	fun getBoolean(key: String?): Boolean {
+		return this.getBoolean(key, false)
+	}
+
+	fun getBoolean(key: String?, defaultValue: Boolean): Boolean {
+		return if (isCorrect) rootSection.getBoolean(key, defaultValue) else defaultValue
+	}
+
+	fun isBoolean(key: String?): Boolean {
+		return rootSection.isBoolean(key)
+	}
+
+	fun getList(key: String?): List<*>? {
+		return this.getList(key, null)
+	}
+
+	fun getList(key: String?, defaultList: List<*>?): List<*>? {
+		return if (isCorrect) rootSection.getList(key, defaultList) else defaultList
+	}
+
+	fun isList(key: String?): Boolean {
+		return rootSection.isList(key)
+	}
+
+	fun getStringList(key: String?): List<String?>? {
+		return rootSection.getStringList(key)
+	}
+
+	fun getIntegerList(key: String?): List<Int?>? {
+		return rootSection.getIntegerList(key)
+	}
+
+	fun getBooleanList(key: String?): List<Boolean?>? {
+		return rootSection.getBooleanList(key)
+	}
+
+	fun getDoubleList(key: String?): List<Double?>? {
+		return rootSection.getDoubleList(key)
+	}
+
+	fun getFloatList(key: String?): List<Float?>? {
+		return rootSection.getFloatList(key)
+	}
+
+	fun getLongList(key: String?): List<Long?>? {
+		return rootSection.getLongList(key)
+	}
+
+	fun getByteList(key: String?): List<Byte?>? {
+		return rootSection.getByteList(key)
+	}
+
+	fun getCharacterList(key: String?): List<Char?>? {
+		return rootSection.getCharacterList(key)
+	}
+
+	fun getShortList(key: String?): List<Short?>? {
+		return rootSection.getShortList(key)
+	}
+
+	fun getMapList(key: String?): List<Map<*, *>?>? {
+		return rootSection.getMapList(key)
+	}
+
+	fun setAll(map: LinkedHashMap<String?, Any>?) {
+		rootSection = ConfigSection(map)
+	}
+
+	fun setAll(section: ConfigSection) {
+		rootSection = section
+	}
+
+	fun exists(key: String): Boolean {
+		return rootSection.exists(key)
+	}
+
+	fun exists(key: String, ignoreCase: Boolean): Boolean {
+		return rootSection.exists(key, ignoreCase)
+	}
+
+	fun remove(key: String?) {
+		rootSection.remove(key)
+	}
+
+	val all: Map<String?, Any?>?
+		get() = rootSection.allMap
+
+	fun setDefault(map: LinkedHashMap<String?, Any>?): Int {
+		return setDefault(ConfigSection(map))
+	}
+
+	fun setDefault(map: ConfigSection): Int {
+		val size = rootSection.size
+		rootSection = fillDefaults(map, rootSection)
+		return rootSection.size - size
+	}
+
+	private fun fillDefaults(defaultMap: ConfigSection, data: ConfigSection): ConfigSection {
+		for (key in defaultMap.keys) {
+			if (!data.containsKey(key)) {
+				data[key] = defaultMap[key]
+			}
+		}
+		return data
+	}
+
+	private fun parseList(content: String) {
+		var content = content
+		content = content.replace("\r\n", "\n")
+		for (v in content.split("\n").toTypedArray()) {
+			if (v.trim { it <= ' ' }.isEmpty()) {
+				continue
+			}
+			rootSection[v] = true
+		}
+	}
+
+	private fun writeProperties(): String {
+		var content = """
+			#Properties Config file
+			#${SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(Date())}
+
+			""".trimIndent()
+		for (o in rootSection.entries) {
+			val entry = o as Map.Entry<*, *>
+			var v = entry.value!!
+			val k = entry.key!!
+			if (v is Boolean) {
+				v = if (v) "on" else "off"
+			}
+			content += "$k=$v\r\n"
+		}
+		return content
+	}
+
+	private fun parseProperties(content: String) {
+		for (line in content.split("\n").toTypedArray()) {
+			if (Pattern.compile("[a-zA-Z0-9\\-_.]*+=+[^\\r\\n]*").matcher(line).matches()) {
+				val splitIndex = line.indexOf('=')
+				if (splitIndex == -1) {
+					continue
+				}
+				val key = line.substring(0, splitIndex)
+				val value = line.substring(splitIndex + 1)
+				val valueLower = value.toLowerCase()
+				if (rootSection.containsKey(key)) {
+					MainLogger.getLogger().debug("[Config] Repeated property " + key + " on file " + file.toString())
+				}
+				when (valueLower) {
+					"on", "true", "yes" -> rootSection[key] = true
+					"off", "false", "no" -> rootSection[key] = false
+					else -> rootSection[key] = value
+				}
+			}
+		}
+	}
+
+	@Deprecated("use {@link #get(String)} instead")
+	fun getNested(key: String?): Any? {
+		return get(key)
+	}
+
+	@Deprecated("use {@link #get(String, Object)} instead")
+	fun <T> getNested(key: String?, defaultValue: T): T {
+		return get(key, defaultValue)
+	}
+
+	@Deprecated("use {@link #get(String)} instead")
+	fun <T> getNestedAs(key: String?, type: Class<T>?): T? {
+		return get(key) as T?
+	}
+
+	@Deprecated("use {@link #remove(String)} instead")
+	fun removeNested(key: String?) {
+		remove(key)
+	}
+
+	private fun parseContent(content: String) {
+		when (type) {
+			PROPERTIES -> parseProperties(content)
+			JSON -> {
+				val builder = GsonBuilder()
+				val gson = builder.create()
+				rootSection = ConfigSection(gson.fromJson(content, object : TypeToken<LinkedHashMap<String?, Any?>?>() {}.type))
+			}
+			YAML -> {
+				val dumperOptions = DumperOptions()
+				dumperOptions.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+				val yaml = Yaml(dumperOptions)
+				rootSection = ConfigSection(yaml.loadAs(content, LinkedHashMap::class.java))
+			}
+			ENUM -> parseList(content)
+			else -> isCorrect = false
+		}
+	}
+
+	val keys: Set<String?>?
+		get() = if (isCorrect) rootSection.getKeys() else HashSet()
+
+	fun getKeys(child: Boolean): Set<String?>? {
+		return if (isCorrect) rootSection.getKeys(child) else HashSet()
+	}
 }

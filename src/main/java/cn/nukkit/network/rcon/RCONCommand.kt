@@ -1,32 +1,27 @@
-package cn.nukkit.network.rcon;
+package cn.nukkit.network.rcon
 
-import java.nio.channels.SocketChannel;
+import java.nio.channels.SocketChannel
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * A data structure to hold sender, request ID and command itself.
  *
  * @author Tee7even
  */
-public class RCONCommand {
-    private final SocketChannel sender;
-    private final int id;
-    private final String command;
+class RCONCommand(sender: SocketChannel?, id: Int, command: String?) {
+	private val sender: SocketChannel?
+	val id: Int
+	val command: String?
+	fun getSender(): SocketChannel? {
+		return sender
+	}
 
-    public RCONCommand(SocketChannel sender, int id, String command) {
-        this.sender = sender;
-        this.id = id;
-        this.command = command;
-    }
-
-    public SocketChannel getSender() {
-        return this.sender;
-    }
-
-    public int getId() {
-        return this.id;
-    }
-
-    public String getCommand() {
-        return this.command;
-    }
+	init {
+		this.sender = sender
+		this.id = id
+		this.command = command
+	}
 }

@@ -1,66 +1,60 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class BookEditPacket extends DataPacket {
+class BookEditPacket : DataPacket() {
+	var action: Action? = null
+	var inventorySlot = 0
+	var pageNumber = 0
+	var secondaryPageNumber = 0
+	var text: String? = null
+	var photoName: String? = null
+	var title: String? = null
+	var author: String? = null
+	var xuid: String? = null
 
-    public static final byte NETWORK_ID = ProtocolInfo.BOOK_EDIT_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public Action action;
-    public int inventorySlot;
-    public int pageNumber;
-    public int secondaryPageNumber;
+	@Override
+	override fun decode() {
+		action = Action.values()[this.getByte()]
+		inventorySlot = this.getByte()
+		when (action) {
+			Action.REPLACE_PAGE, Action.ADD_PAGE -> {
+				pageNumber = this.getByte()
+				text = this.getString()
+				photoName = this.getString()
+			}
+			Action.DELETE_PAGE -> pageNumber = this.getByte()
+			Action.SWAP_PAGES -> {
+				pageNumber = this.getByte()
+				secondaryPageNumber = this.getByte()
+			}
+			Action.SIGN_BOOK -> {
+				title = this.getString()
+				author = this.getString()
+				xuid = this.getString()
+			}
+		}
+	}
 
-    public String text;
-    public String photoName;
+	@Override
+	override fun encode() {
+	}
 
-    public String title;
-    public String author;
-    public String xuid;
+	enum class Action {
+		REPLACE_PAGE, ADD_PAGE, DELETE_PAGE, SWAP_PAGES, SIGN_BOOK
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
-    @Override
-    public void decode() {
-        this.action = Action.values()[this.getByte()];
-        this.inventorySlot = this.getByte();
-
-        switch (this.action) {
-            case REPLACE_PAGE:
-            case ADD_PAGE:
-                this.pageNumber = this.getByte();
-                this.text = this.getString();
-                this.photoName = this.getString();
-                break;
-            case DELETE_PAGE:
-                this.pageNumber = this.getByte();
-                break;
-            case SWAP_PAGES:
-                this.pageNumber = this.getByte();
-                this.secondaryPageNumber = this.getByte();
-                break;
-            case SIGN_BOOK:
-                this.title = this.getString();
-                this.author = this.getString();
-                this.xuid = this.getString();
-                break;
-        }
-    }
-
-    @Override
-    public void encode() {
-
-    }
-
-    public enum Action {
-        REPLACE_PAGE,
-        ADD_PAGE,
-        DELETE_PAGE,
-        SWAP_PAGES,
-        SIGN_BOOK
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.BOOK_EDIT_PACKET
+	}
 }

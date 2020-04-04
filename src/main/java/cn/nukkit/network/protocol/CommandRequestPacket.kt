@@ -1,55 +1,56 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.network.protocol.types.CommandOriginData;
-import lombok.ToString;
-
-import java.util.UUID;
+import cn.nukkit.network.protocol.types.CommandOriginData
+import lombok.ToString
+import java.util.UUID
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class CommandRequestPacket extends DataPacket {
+class CommandRequestPacket : DataPacket() {
+	var command: String? = null
+	var data: CommandOriginData? = null
 
-    public static final byte NETWORK_ID = ProtocolInfo.COMMAND_REQUEST_PACKET;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public static final int TYPE_PLAYER = 0;
-    public static final int TYPE_COMMAND_BLOCK = 1;
-    public static final int TYPE_MINECART_COMMAND_BLOCK = 2;
-    public static final int TYPE_DEV_CONSOLE = 3;
-    public static final int TYPE_AUTOMATION_PLAYER = 4;
-    public static final int TYPE_CLIENT_AUTOMATION = 5;
-    public static final int TYPE_DEDICATED_SERVER = 6;
-    public static final int TYPE_ENTITY = 7;
-    public static final int TYPE_VIRTUAL = 8;
-    public static final int TYPE_GAME_ARGUMENT = 9;
-    public static final int TYPE_INTERNAL = 10;
+	@Override
+	override fun decode() {
+		command = this.getString()
+		val type: Origin = CommandOriginData.Origin.values().get(this.getVarInt())
+		val uuid: UUID = this.getUUID()
+		val requestId: String = this.getString()
+		var varLong: Long? = null
+		if (type === CommandOriginData.Origin.DEV_CONSOLE || type === CommandOriginData.Origin.TEST) {
+			varLong = this.getVarLong()
+		}
+		data = CommandOriginData(type, uuid, requestId, varLong)
+	}
 
-    public String command;
-    public CommandOriginData data;
+	@Override
+	override fun encode() {
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
-    @Override
-    public void decode() {
-        this.command = this.getString();
-
-        CommandOriginData.Origin type = CommandOriginData.Origin.values()[this.getVarInt()];
-        UUID uuid = this.getUUID();
-        String requestId = this.getString();
-        Long varLong = null;
-        if (type == CommandOriginData.Origin.DEV_CONSOLE || type == CommandOriginData.Origin.TEST) {
-            varLong = this.getVarLong();
-        }
-        this.data = new CommandOriginData(type, uuid, requestId, varLong);
-    }
-
-    @Override
-    public void encode() {
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.COMMAND_REQUEST_PACKET
+		const val TYPE_PLAYER = 0
+		const val TYPE_COMMAND_BLOCK = 1
+		const val TYPE_MINECART_COMMAND_BLOCK = 2
+		const val TYPE_DEV_CONSOLE = 3
+		const val TYPE_AUTOMATION_PLAYER = 4
+		const val TYPE_CLIENT_AUTOMATION = 5
+		const val TYPE_DEDICATED_SERVER = 6
+		const val TYPE_ENTITY = 7
+		const val TYPE_VIRTUAL = 8
+		const val TYPE_GAME_ARGUMENT = 9
+		const val TYPE_INTERNAL = 10
+	}
 }

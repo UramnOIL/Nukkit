@@ -1,39 +1,45 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.BlockVector3;
-import lombok.ToString;
+import cn.nukkit.math.BlockVector3
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString(exclude = "namedTag")
-public class BlockEntityDataPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.BLOCK_ENTITY_DATA_PACKET;
+class BlockEntityDataPacket : DataPacket() {
+	var x = 0
+	var y = 0
+	var z = 0
+	var namedTag: ByteArray?
 
-    public int x;
-    public int y;
-    public int z;
-    public byte[] namedTag;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun decode() {
+		val v: BlockVector3 = this.getBlockVector3()
+		x = v.x
+		y = v.y
+		z = v.z
+		namedTag = this.get()
+	}
 
-    @Override
-    public void decode() {
-        BlockVector3 v = this.getBlockVector3();
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        this.namedTag = this.get();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putBlockVector3(x, y, z)
+		this.put(namedTag)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putBlockVector3(this.x, this.y, this.z);
-        this.put(this.namedTag);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.BLOCK_ENTITY_DATA_PACKET
+	}
 }

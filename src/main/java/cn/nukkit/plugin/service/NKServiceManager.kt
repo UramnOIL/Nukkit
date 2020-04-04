@@ -1,145 +1,110 @@
-package cn.nukkit.plugin.service;
+package cn.nukkit.plugin.service
 
-
-import cn.nukkit.Server;
-import cn.nukkit.plugin.Plugin;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-
-import java.util.*;
+import cn.nukkit.Server
+import cn.nukkit.plugin.Plugin
+import com.google.common.base.Preconditions
+import com.google.common.collect.ImmutableList
+import java.util.*
 
 /**
  * Created on 16-11-20.
  */
-public class NKServiceManager implements ServiceManager {
+class NKServiceManager : ServiceManager {
+	private val handle: MutableMap<Class<*>, MutableList<RegisteredServiceProvider<*>>> = HashMap()
+	override fun <T> register(service: Class<T>, provider: T, plugin: Plugin?, priority: ServicePriority): Boolean {
+		Preconditions.checkNotNull(provider)
+		Preconditions.checkNotNull(priority)
+		Preconditions.checkNotNull(service)
 
-    private final Map<Class<?>, List<RegisteredServiceProvider<?>>> handle = new HashMap<>();
+		// build-in service provider needn't plugin param
+		if (plugin == null && provider!!.javaClass.classLoader !== Server::class.java.classLoader) {
+			throw NullPointerException("plugin")
+		}
+		return provide(service, provider, plugin, priority)
+	}
 
-    @Override
-    public <T> boolean register(Class<T> service, T provider, Plugin plugin, ServicePriority priority) {
-        Preconditions.checkNotNull(provider);
-        Preconditions.checkNotNull(priority);
-        Preconditions.checkNotNull(service);
+	protected fun <T> provide(service: Class<T>, instance: T, plugin: Plugin?, priority: ServicePriority): Boolean {
+		synchronized(handle) {
+			val list: List<RegisteredServiceProvider<*>> = handle.computeIfAbsent(service) { k: Class<*>? -> ArrayList() }
+			val registered = RegisteredServiceProvider(service, instance, priority, plugin)
+			val position = Collections.binarySearch(list, registered)
+			if (position > -1) return false
+			list.add(-(position + 1), registered)
+		}
+		return true
+	}
 
-        // build-in service provider needn't plugin param
-        if (plugin == null && provider.getClass().getClassLoader() != Server.class.getClassLoader()) {
-            throw new NullPointerException("plugin");
-        }
+	override fun cancel(plugin: Plugin): List<RegisteredServiceProvider<*>> {
+		val builder = ImmutableList.builder<RegisteredServiceProvider<*>>()
+		var it: MutableIterator<RegisteredServiceProvider<*>>
+		var registered: RegisteredServiceProvider<*>
+		synchronized(handle) {
+			for (list in handle.values) {
+				it = list.iterator()
+				while (it.hasNext()) {
+					registered = it.next()
+					if (registered.plugin === plugin) {
+						it.remove()
+						builder.add(registered)
+					}
+				}
+			}
+		}
+		return builder.build()
+	}
 
-        return provide(service, provider, plugin, priority);
-    }
+	override fun <T> cancel(service: Class<T>, provider: T): RegisteredServiceProvider<T>? {
+		var result: RegisteredServiceProvider<T>? = null
+		synchronized(handle) {
+			val it = handle[service]!!.iterator()
+			var next: RegisteredServiceProvider<*>
+			while (it.hasNext() && result == null) {
+				next = it.next()
+				if (next.provider === provider) {
+					it.remove()
+					result = next
+				}
+			}
+		}
+		return result
+	}
 
-    protected <T> boolean provide(Class<T> service, T instance, Plugin plugin, ServicePriority priority) {
-        synchronized (handle) {
-            List<RegisteredServiceProvider<?>> list = handle.computeIfAbsent(service, k -> new ArrayList<>());
+	override fun <T> getProvider(service: Class<T>): RegisteredServiceProvider<T>? {
+		synchronized(handle) {
+			val list: List<RegisteredServiceProvider<*>>? = handle[service]
+			return if (list == null || list.isEmpty()) null else list[0] as RegisteredServiceProvider<T>
+		}
+	}
 
-            RegisteredServiceProvider<T> registered = new RegisteredServiceProvider<>(service, instance, priority, plugin);
+	override val knownService: List<Class<*>?>?
+		get() = ImmutableList.copyOf(handle.keys)
 
-            int position = Collections.binarySearch(list, registered);
+	override fun getRegistrations(plugin: Plugin): List<RegisteredServiceProvider<*>> {
+		val builder = ImmutableList.builder<RegisteredServiceProvider<*>>()
+		synchronized(handle) {
+			for (registered in handle.values) {
+				for (provider in registered) {
+					if (provider.plugin == plugin) {
+						builder.add(provider)
+					}
+				}
+			}
+		}
+		return builder.build()
+	}
 
-            if (position > -1) return false;
+	override fun <T> getRegistrations(service: Class<T>): List<RegisteredServiceProvider<T>> {
+		val builder: ImmutableList.Builder<RegisteredServiceProvider<T>> = ImmutableList.builder()
+		synchronized(handle) {
+			val registered = handle[service] ?: return ImmutableList.of()
+			for (provider in registered) {
+				builder.add(provider as RegisteredServiceProvider<T>)
+			}
+		}
+		return builder.build()
+	}
 
-            list.add(-(position + 1), registered);
-        }
-
-        return true;
-    }
-
-    @Override
-    public List<RegisteredServiceProvider<?>> cancel(Plugin plugin) {
-        ImmutableList.Builder<RegisteredServiceProvider<?>> builder = ImmutableList.builder();
-
-        Iterator<RegisteredServiceProvider<?>> it;
-        RegisteredServiceProvider<?> registered;
-
-        synchronized (handle) {
-            for (List<RegisteredServiceProvider<?>> list : handle.values()) {
-                it = list.iterator();
-
-                while (it.hasNext()) {
-                    registered = it.next();
-                    if (registered.getPlugin() == plugin) {
-                        it.remove();
-                        builder.add(registered);
-                    }
-                }
-
-            }
-        }
-
-        return builder.build();
-    }
-
-    @Override
-    public <T> RegisteredServiceProvider<T> cancel(Class<T> service, T provider) {
-        RegisteredServiceProvider<T> result = null;
-
-        synchronized (handle) {
-            Iterator<RegisteredServiceProvider<?>> it = handle.get(service).iterator();
-            RegisteredServiceProvider next;
-
-            while (it.hasNext() && result == null) {
-                next = it.next();
-                if (next.getProvider() == provider) {
-                    it.remove();
-                    result = next;
-                }
-            }
-
-        }
-
-        return result;
-    }
-
-    @Override
-    public <T> RegisteredServiceProvider<T> getProvider(Class<T> service) {
-        synchronized (handle) {
-            List<RegisteredServiceProvider<?>> list = handle.get(service);
-            if (list == null || list.isEmpty()) return null;
-            return (RegisteredServiceProvider<T>) list.get(0);
-        }
-    }
-
-    @Override
-    public List<Class<?>> getKnownService() {
-        return ImmutableList.copyOf(handle.keySet());
-    }
-
-    @Override
-    public List<RegisteredServiceProvider<?>> getRegistrations(Plugin plugin) {
-        ImmutableList.Builder<RegisteredServiceProvider<?>> builder = ImmutableList.builder();
-        synchronized (handle) {
-            for (List<RegisteredServiceProvider<?>> registered : handle.values()) {
-                for (RegisteredServiceProvider<?> provider : registered) {
-                    if (provider.getPlugin().equals(plugin)) {
-                        builder.add(provider);
-                    }
-                }
-            }
-        }
-        return builder.build();
-    }
-
-    @Override
-    public <T> List<RegisteredServiceProvider<T>> getRegistrations(Class<T> service) {
-        ImmutableList.Builder<RegisteredServiceProvider<T>> builder = ImmutableList.builder();
-        synchronized (handle) {
-            List<RegisteredServiceProvider<?>> registered = handle.get(service);
-            if (registered == null) {
-                ImmutableList<RegisteredServiceProvider<T>> empty = ImmutableList.of();
-                return empty;
-            }
-            for (RegisteredServiceProvider<?> provider : registered) {
-                builder.add((RegisteredServiceProvider<T>)provider);
-            }
-        }
-        return builder.build();
-    }
-
-    @Override
-    public <T> boolean isProvidedFor(Class<T> service) {
-        synchronized (handle) {
-            return handle.containsKey(service);
-        }
-    }
+	override fun <T> isProvidedFor(service: Class<T>): Boolean {
+		synchronized(handle) { return handle.containsKey(service) }
+	}
 }

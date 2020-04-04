@@ -1,73 +1,76 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.Vector3f;
-import lombok.ToString;
+import cn.nukkit.math.Vector3f
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Created on 15-10-14.
  */
 @ToString
-public class MovePlayerPacket extends DataPacket {
+class MovePlayerPacket : DataPacket() {
+	var eid: Long = 0
+	var x = 0f
+	var y = 0f
+	var z = 0f
+	var yaw = 0f
+	var headYaw = 0f
+	var pitch = 0f
+	var mode = MODE_NORMAL
+	var onGround = false
+	var ridingEid: Long = 0
+	var int1 = 0
+	var int2 = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.MOVE_PLAYER_PACKET;
+	@Override
+	override fun decode() {
+		eid = this.getEntityRuntimeId()
+		val v: Vector3f = this.getVector3f()
+		x = v.x
+		y = v.y
+		z = v.z
+		pitch = this.getLFloat()
+		yaw = this.getLFloat()
+		headYaw = this.getLFloat()
+		mode = this.getByte()
+		onGround = this.getBoolean()
+		ridingEid = this.getEntityRuntimeId()
+		if (mode == MODE_TELEPORT) {
+			int1 = this.getLInt()
+			int2 = this.getLInt()
+		}
+	}
 
-    public static final int MODE_NORMAL = 0;
-    public static final int MODE_RESET = 1;
-    public static final int MODE_TELEPORT = 2;
-    public static final int MODE_PITCH = 3; //facepalm Mojang
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putEntityRuntimeId(eid)
+		this.putVector3f(x, y, z)
+		this.putLFloat(pitch)
+		this.putLFloat(yaw)
+		this.putLFloat(headYaw)
+		this.putByte(mode.toByte())
+		this.putBoolean(onGround)
+		this.putEntityRuntimeId(ridingEid)
+		if (mode == MODE_TELEPORT) {
+			this.putLInt(int1)
+			this.putLInt(int2)
+		}
+	}
 
-    public long eid;
-    public float x;
-    public float y;
-    public float z;
-    public float yaw;
-    public float headYaw;
-    public float pitch;
-    public int mode = MODE_NORMAL;
-    public boolean onGround;
-    public long ridingEid;
-    public int int1 = 0;
-    public int int2 = 0;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void decode() {
-        this.eid = this.getEntityRuntimeId();
-        Vector3f v = this.getVector3f();
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        this.pitch = this.getLFloat();
-        this.yaw = this.getLFloat();
-        this.headYaw = this.getLFloat();
-        this.mode = this.getByte();
-        this.onGround = this.getBoolean();
-        this.ridingEid = this.getEntityRuntimeId();
-        if (this.mode == MODE_TELEPORT) {
-            this.int1 = this.getLInt();
-            this.int2 = this.getLInt();
-        }
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putEntityRuntimeId(this.eid);
-        this.putVector3f(this.x, this.y, this.z);
-        this.putLFloat(this.pitch);
-        this.putLFloat(this.yaw);
-        this.putLFloat(this.headYaw);
-        this.putByte((byte) this.mode);
-        this.putBoolean(this.onGround);
-        this.putEntityRuntimeId(this.ridingEid);
-        if (this.mode == MODE_TELEPORT) {
-            this.putLInt(this.int1);
-            this.putLInt(this.int2);
-        }
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.MOVE_PLAYER_PACKET
+		const val MODE_NORMAL = 0
+		const val MODE_RESET = 1
+		const val MODE_TELEPORT = 2
+		const val MODE_PITCH = 3 //facepalm Mojang
+	}
 }

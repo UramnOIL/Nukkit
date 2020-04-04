@@ -1,72 +1,65 @@
-package cn.nukkit.nbt.tag;
+package cn.nukkit.nbt.tag
 
-import cn.nukkit.nbt.stream.NBTInputStream;
-import cn.nukkit.nbt.stream.NBTOutputStream;
+import cn.nukkit.nbt.stream.NBTInputStream
+import cn.nukkit.nbt.stream.NBTOutputStream
+import java.io.IOException
+import java.util.Arrays
+import kotlin.jvm.Throws
 
-import java.io.IOException;
-import java.util.Arrays;
+class IntArrayTag : Tag {
+	var data: IntArray?
 
-public class IntArrayTag extends Tag {
-    public int[] data;
+	constructor(name: String?) : super(name) {}
+	constructor(name: String?, data: IntArray?) : super(name) {
+		this.data = data
+	}
 
-    public IntArrayTag(String name) {
-        super(name);
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun write(dos: NBTOutputStream) {
+		dos.writeInt(data!!.size)
+		for (aData in data!!) {
+			dos.writeInt(aData)
+		}
+	}
 
-    public IntArrayTag(String name, int[] data) {
-        super(name);
-        this.data = data;
-    }
+	@Override
+	@Throws(IOException::class)
+	override fun load(dis: NBTInputStream) {
+		val length: Int = dis.readInt()
+		data = IntArray(length)
+		for (i in 0 until length) {
+			data!![i] = dis.readInt()
+		}
+	}
 
-    @Override
-    void write(NBTOutputStream dos) throws IOException {
-        dos.writeInt(data.length);
-        for (int aData : data) {
-            dos.writeInt(aData);
-        }
-    }
+	@Override
+	override fun parseValue(): IntArray? {
+		return data
+	}
 
-    @Override
-    void load(NBTInputStream dis) throws IOException {
-        int length = dis.readInt();
-        data = new int[length];
-        for (int i = 0; i < length; i++) {
-            data[i] = dis.readInt();
-        }
-    }
+	@get:Override
+	override val id: Byte
+		get() = TAG_Int_Array
 
-    public int[] getData() {
-        return data;
-    }
+	@Override
+	override fun toString(): String {
+		return "IntArrayTag " + this.getName().toString() + " [" + data!!.size.toString() + " bytes]"
+	}
 
-    @Override
-    public int[] parseValue() {
-        return this.data;
-    }
+	@Override
+	override fun equals(obj: Object): Boolean {
+		if (super.equals(obj)) {
+			val intArrayTag = obj as IntArrayTag
+			return data == null && intArrayTag.data == null || data != null && Arrays.equals(data, intArrayTag.data)
+		}
+		return false
+	}
 
-    @Override
-    public byte getId() {
-        return TAG_Int_Array;
-    }
-
-    @Override
-    public String toString() {
-        return "IntArrayTag " + this.getName() + " [" + data.length + " bytes]";
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj)) {
-            IntArrayTag intArrayTag = (IntArrayTag) obj;
-            return ((data == null && intArrayTag.data == null) || (data != null && Arrays.equals(data, intArrayTag.data)));
-        }
-        return false;
-    }
-
-    @Override
-    public Tag copy() {
-        int[] cp = new int[data.length];
-        System.arraycopy(data, 0, cp, 0, data.length);
-        return new IntArrayTag(getName(), cp);
-    }
+	@Override
+	override fun copy(): Tag {
+		val cp = IntArray(data!!.size)
+		System.arraycopy(data, 0, cp, 0, data!!.size)
+		return IntArrayTag(getName(), cp)
+	}
 }

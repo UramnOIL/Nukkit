@@ -1,45 +1,48 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.Nukkit;
-import com.google.common.io.ByteStreams;
-import lombok.ToString;
+import cn.nukkit.Nukkit
+import com.google.common.io.ByteStreams
+import lombok.ToString
+import java.io.InputStream
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
-import java.io.InputStream;
+@ToString(exclude = ["tag"])
+class AvailableEntityIdentifiersPacket : DataPacket() {
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.AVAILABLE_ENTITY_IDENTIFIERS_PACKET
+		private val TAG: ByteArray?
 
-@ToString(exclude = {"tag"})
-public class AvailableEntityIdentifiersPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.AVAILABLE_ENTITY_IDENTIFIERS_PACKET;
+		init {
+			TAG = try {
+				val inputStream: InputStream = Nukkit::class.java.getClassLoader().getResourceAsStream("entity_identifiers.dat")
+				if (cn.nukkit.network.protocol.inputStream == null) {
+					throw AssertionError("Could not find entity_identifiers.dat")
+				}
+				ByteStreams.toByteArray(cn.nukkit.network.protocol.inputStream)
+			} catch (e: Exception) {
+				throw AssertionError("Error whilst loading entity_identifiers.dat", e)
+			}
+		}
+	}
 
-    private static final byte[] TAG;
+	var tag = TAG
 
-    static {
-        try {
-            InputStream inputStream = Nukkit.class.getClassLoader().getResourceAsStream("entity_identifiers.dat");
-            if (inputStream == null) {
-                throw new AssertionError("Could not find entity_identifiers.dat");
-            }
-            //noinspection UnstableApiUsage
-            TAG = ByteStreams.toByteArray(inputStream);
-        } catch (Exception e) {
-            throw new AssertionError("Error whilst loading entity_identifiers.dat", e);
-        }
-    }
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public byte[] tag = TAG;
+	@Override
+	override fun decode() {
+		tag = this.get()
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
-    @Override
-    public void decode() {
-        this.tag = this.get();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.put(this.tag);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.put(tag)
+	}
 }

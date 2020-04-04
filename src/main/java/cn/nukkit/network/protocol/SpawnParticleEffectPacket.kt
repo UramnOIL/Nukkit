@@ -1,32 +1,38 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.math.Vector3f;
-import lombok.ToString;
+import cn.nukkit.math.Vector3f
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class SpawnParticleEffectPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.SPAWN_PARTICLE_EFFECT_PACKET;
+class SpawnParticleEffectPacket : DataPacket() {
+	var dimensionId = 0
+	var uniqueEntityId: Long = -1
+	var position: Vector3f? = null
+	var identifier: String? = null
 
-    public int dimensionId;
-    public long uniqueEntityId = -1;
-    public Vector3f position;
-    public String identifier;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putByte(dimensionId.toByte())
+		this.putEntityUniqueId(uniqueEntityId)
+		this.putVector3f(position)
+		this.putString(identifier)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putByte((byte) this.dimensionId);
-        this.putEntityUniqueId(uniqueEntityId);
-        this.putVector3f(this.position);
-        this.putString(this.identifier);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SPAWN_PARTICLE_EFFECT_PACKET
+	}
 }

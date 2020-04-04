@@ -1,39 +1,41 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * Created on 2016/1/5 by xtypr.
  * Package cn.nukkit.network.protocol in project nukkit .
  */
 @ToString
-public class ChangeDimensionPacket extends DataPacket {
+class ChangeDimensionPacket : DataPacket() {
+	var dimension = 0
+	var x = 0f
+	var y = 0f
+	var z = 0f
+	var respawn = false
 
-    public static final byte NETWORK_ID = ProtocolInfo.CHANGE_DIMENSION_PACKET;
+	@Override
+	override fun decode() {
+	}
 
-    public int dimension;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarInt(dimension)
+		this.putVector3f(x, y, z)
+		this.putBoolean(respawn)
+	}
 
-    public float x;
-    public float y;
-    public float z;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public boolean respawn;
-
-    @Override
-    public void decode() {
-
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarInt(this.dimension);
-        this.putVector3f(this.x, this.y, this.z);
-        this.putBoolean(this.respawn);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.CHANGE_DIMENSION_PACKET
+	}
 }

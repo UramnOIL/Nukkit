@@ -1,72 +1,72 @@
-package cn.nukkit.timings;
+package cn.nukkit.timings
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-
-import java.util.*;
-import java.util.function.Function;
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import java.util.*
+import java.util.function.Function
 
 /**
  * @author Tee7even
- *         <p>
- *         Various methods for more compact JSON object constructing
+ *
+ *
+ * Various methods for more compact JSON object constructing
  */
-@SuppressWarnings("unchecked")
-public class JsonUtil {
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+object JsonUtil {
+	private val GSON = GsonBuilder().setPrettyPrinting().create()
+	@JvmStatic
+    fun toArray(vararg objects: Any?): JsonArray {
+		val array: List<*> = ArrayList<Any?>()
+		Collections.addAll(array, *objects)
+		return GSON.toJsonTree(array).asJsonArray
+	}
 
-    public static JsonArray toArray(Object... objects) {
-        List array = new ArrayList();
-        Collections.addAll(array, objects);
-        return GSON.toJsonTree(array).getAsJsonArray();
-    }
+	@JvmStatic
+    fun toObject(`object`: Any?): JsonObject {
+		return GSON.toJsonTree(`object`).asJsonObject
+	}
 
-    public static JsonObject toObject(Object object) {
-        return GSON.toJsonTree(object).getAsJsonObject();
-    }
+	@JvmStatic
+    fun <E> mapToObject(collection: Iterable<E>, mapper: Function<E, JSONPair?>): JsonObject {
+		val `object`: MutableMap<*, *> = LinkedHashMap<Any?, Any?>()
+		for (e in collection) {
+			val pair = mapper.apply(e)
+			if (pair != null) {
+				`object`[pair.key] = pair.value
+			}
+		}
+		return GSON.toJsonTree(`object`).asJsonObject
+	}
 
-    public static <E> JsonObject mapToObject(Iterable<E> collection, Function<E, JSONPair> mapper) {
-        Map object = new LinkedHashMap();
-        for (E e : collection) {
-            JSONPair pair = mapper.apply(e);
-            if (pair != null) {
-                object.put(pair.key, pair.value);
-            }
-        }
-        return GSON.toJsonTree(object).getAsJsonObject();
-    }
+	fun <E> mapToArray(elements: Array<E>, mapper: Function<E, Any?>?): JsonArray {
+		val array: ArrayList<*> = ArrayList<Any?>()
+		Collections.addAll(array, *elements)
+		return mapToArray(array, mapper)
+	}
 
-    public static <E> JsonArray mapToArray(E[] elements, Function<E, Object> mapper) {
-        ArrayList array = new ArrayList();
-        Collections.addAll(array, elements);
-        return mapToArray(array, mapper);
-    }
+	fun <E> mapToArray(collection: Iterable<E>, mapper: Function<E, Any?>): JsonArray {
+		val array: MutableList<*> = ArrayList<Any?>()
+		for (e in collection) {
+			val obj = mapper.apply(e)
+			if (obj != null) {
+				array.add(obj)
+			}
+		}
+		return GSON.toJsonTree(array).asJsonArray
+	}
 
-    public static <E> JsonArray mapToArray(Iterable<E> collection, Function<E, Object> mapper) {
-        List array = new ArrayList();
-        for (E e : collection) {
-            Object obj = mapper.apply(e);
-            if (obj != null) {
-                array.add(obj);
-            }
-        }
-        return GSON.toJsonTree(array).getAsJsonArray();
-    }
+	class JSONPair {
+		val key: String
+		val value: Any
 
-    public static class JSONPair {
-        public final String key;
-        public final Object value;
+		constructor(key: String, value: Any) {
+			this.key = key
+			this.value = value
+		}
 
-        public JSONPair(String key, Object value) {
-            this.key = key;
-            this.value = value;
-        }
-
-        public JSONPair(int key, Object value) {
-            this.key = String.valueOf(key);
-            this.value = value;
-        }
-    }
+		constructor(key: Int, value: Any) {
+			this.key = key.toString()
+			this.value = value
+		}
+	}
 }

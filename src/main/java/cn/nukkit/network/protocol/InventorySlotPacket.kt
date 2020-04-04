@@ -1,37 +1,43 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.item.Item;
-import lombok.ToString;
+import cn.nukkit.item.Item
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class InventorySlotPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.INVENTORY_SLOT_PACKET;
+class InventorySlotPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var inventoryId = 0
+	var slot = 0
+	var item: Item? = null
 
-    public int inventoryId;
-    public int slot;
-    public Item item;
+	@Override
+	override fun decode() {
+		inventoryId = this.getUnsignedVarInt() as Int
+		slot = this.getUnsignedVarInt() as Int
+		item = this.getSlot()
+	}
 
-    @Override
-    public void decode() {
-        this.inventoryId = (int) this.getUnsignedVarInt();
-        this.slot = (int) this.getUnsignedVarInt();
-        this.item = this.getSlot();
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putUnsignedVarInt(inventoryId.toByte())
+		this.putUnsignedVarInt(slot)
+		this.putSlot(item)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putUnsignedVarInt((byte) this.inventoryId);
-        this.putUnsignedVarInt(this.slot);
-        this.putSlot(this.item);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.INVENTORY_SLOT_PACKET
+	}
 }

@@ -1,18 +1,18 @@
-package cn.nukkit.metadata;
+package cn.nukkit.metadata
 
-import cn.nukkit.IPlayer;
+import cn.nukkit.IPlayer
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class PlayerMetadataStore extends MetadataStore {
-
-    @Override
-    protected String disambiguate(Metadatable player, String metadataKey) {
-        if (!(player instanceof IPlayer)) {
-            throw new IllegalArgumentException("Argument must be an IPlayer instance");
-        }
-        return (((IPlayer) player).getName() + ":" + metadataKey).toLowerCase();
-    }
+class PlayerMetadataStore : MetadataStore() {
+	@Override
+	protected override fun disambiguate(player: Metadatable?, metadataKey: String?): String? {
+		if (player !is IPlayer) {
+			throw IllegalArgumentException("Argument must be an IPlayer instance")
+		}
+		return ((player as IPlayer?).name.toString() + ":" + metadataKey).toLowerCase()
+	}
 }

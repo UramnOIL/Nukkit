@@ -1,20 +1,23 @@
-package cn.nukkit.metadata;
+package cn.nukkit.metadata
 
-import cn.nukkit.plugin.Plugin;
-
-import java.util.List;
+import cn.nukkit.plugin.Plugin
+import java.util.List
+import kotlin.jvm.Throws
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public interface Metadatable {
+interface Metadatable {
+	@Throws(Exception::class)
+	fun setMetadata(metadataKey: String?, newMetadataValue: MetadataValue?)
 
-    void setMetadata(String metadataKey, MetadataValue newMetadataValue) throws Exception;
+	@Throws(Exception::class)
+	fun getMetadata(metadataKey: String?): List<MetadataValue?>?
 
-    List<MetadataValue> getMetadata(String metadataKey) throws Exception;
+	@Throws(Exception::class)
+	fun hasMetadata(metadataKey: String?): Boolean
 
-    boolean hasMetadata(String metadataKey) throws Exception;
-
-    void removeMetadata(String metadataKey, Plugin owningPlugin) throws Exception;
+	@Throws(Exception::class)
+	fun removeMetadata(metadataKey: String?, owningPlugin: Plugin?)
 }

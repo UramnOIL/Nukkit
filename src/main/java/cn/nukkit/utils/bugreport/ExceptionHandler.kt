@@ -1,27 +1,25 @@
-package cn.nukkit.utils.bugreport;
+package cn.nukkit.utils.bugreport
 
 /**
  * Project nukkit
  */
-public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
+class ExceptionHandler : Thread.UncaughtExceptionHandler {
+	override fun uncaughtException(thread: Thread, throwable: Throwable) {
+		handle(thread, throwable)
+	}
 
-    public static void registerExceptionHandler() {
-        Thread.setDefaultUncaughtExceptionHandler(new ExceptionHandler());
-    }
+	fun handle(thread: Thread?, throwable: Throwable) {
+		throwable.printStackTrace()
+		try {
+			BugReportGenerator(throwable).start()
+		} catch (exception: Exception) {
+			// Fail Safe
+		}
+	}
 
-    @Override
-    public void uncaughtException(Thread thread, Throwable throwable) {
-        handle(thread, throwable);
-    }
-
-    public void handle(Thread thread, Throwable throwable) {
-        throwable.printStackTrace();
-
-        try {
-            new BugReportGenerator(throwable).start();
-        } catch (Exception exception) {
-            // Fail Safe
-        }
-    }
-
+	companion object {
+		fun registerExceptionHandler() {
+			Thread.setDefaultUncaughtExceptionHandler(ExceptionHandler())
+		}
+	}
 }

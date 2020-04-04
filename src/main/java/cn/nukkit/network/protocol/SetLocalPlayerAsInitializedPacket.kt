@@ -1,25 +1,31 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class SetLocalPlayerAsInitializedPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.SET_LOCAL_PLAYER_AS_INITIALIZED_PACKET;
+class SetLocalPlayerAsInitializedPacket : DataPacket() {
+	var eid: Long = 0
 
-    public long eid;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun decode() {
+		eid = this.getUnsignedVarLong()
+	}
 
-    @Override
-    public void decode() {
-        eid = this.getUnsignedVarLong();
-    }
+	@Override
+	override fun encode() {
+		this.putUnsignedVarLong(eid)
+	}
 
-    @Override
-    public void encode() {
-        this.putUnsignedVarLong(eid);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SET_LOCAL_PLAYER_AS_INITIALIZED_PACKET
+	}
 }

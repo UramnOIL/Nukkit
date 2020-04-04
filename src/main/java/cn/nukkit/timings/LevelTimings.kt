@@ -1,47 +1,52 @@
-package cn.nukkit.timings;
+package cn.nukkit.timings
 
-import cn.nukkit.level.Level;
-import co.aikar.timings.Timing;
-import co.aikar.timings.TimingsManager;
+import cn.nukkit.level.Level
+import co.aikar.timings.Timing
+import co.aikar.timings.TimingsManager
 
 /**
  * @author Pub4Game
  * @author Tee7even
  */
-public class LevelTimings {
-    public final Timing doChunkUnload;
-    public final Timing doTickPending;
-    public final Timing doChunkGC;
-    public final Timing doTick;
+class LevelTimings(level: Level) {
+	@JvmField
+	val doChunkUnload: Timing
+	@JvmField
+	val doTickPending: Timing
+	@JvmField
+	val doChunkGC: Timing
+	@JvmField
+	val doTick: Timing
+	@JvmField
+	val tickChunks: Timing
+	@JvmField
+	val entityTick: Timing
+	@JvmField
+	val blockEntityTick: Timing
+	@JvmField
+	val syncChunkSendTimer: Timing
+	@JvmField
+	val syncChunkSendPrepareTimer: Timing
+	@JvmField
+	val syncChunkLoadTimer: Timing
+	val syncChunkLoadDataTimer: Timing
+	val syncChunkLoadEntitiesTimer: Timing
+	val syncChunkLoadBlockEntitiesTimer: Timing
 
-    public final Timing tickChunks;
-    public final Timing entityTick;
-    public final Timing blockEntityTick;
-
-    public final Timing syncChunkSendTimer;
-    public final Timing syncChunkSendPrepareTimer;
-    public final Timing syncChunkLoadTimer;
-    public final Timing syncChunkLoadDataTimer;
-    public final Timing syncChunkLoadEntitiesTimer;
-    public final Timing syncChunkLoadBlockEntitiesTimer;
-
-    public LevelTimings(Level level) {
-        String name = level.getFolderName() + " - ";
-
-        this.doChunkUnload = TimingsManager.getTiming(name + "doChunkUnload");
-        this.doTickPending = TimingsManager.getTiming(name + "doTickPending");
-        this.doChunkGC = TimingsManager.getTiming(name + "doChunkGC");
-        this.doTick = TimingsManager.getTiming(name + "doTick");
-
-        this.tickChunks = TimingsManager.getTiming(name + "tickChunks");
-        this.entityTick = TimingsManager.getTiming(name + "entityTick");
-        this.blockEntityTick = TimingsManager.getTiming(name + "blockEntityTick");
-
-        this.syncChunkSendTimer = TimingsManager.getTiming(name + "syncChunkSend");
-        this.syncChunkSendPrepareTimer = TimingsManager.getTiming(name + "syncChunkSendPrepare");
-        this.syncChunkLoadTimer = TimingsManager.getTiming(name + "syncChunkLoad");
-        this.syncChunkLoadDataTimer = TimingsManager.getTiming(name + "syncChunkLoad - Data");
-        this.syncChunkLoadEntitiesTimer = TimingsManager.getTiming(name + "syncChunkLoad - Entities");
-        this.syncChunkLoadBlockEntitiesTimer = TimingsManager.getTiming(name + "syncChunkLoad - BlockEntities");
-    }
+	init {
+		val name = level.folderName + " - "
+		doChunkUnload = TimingsManager.getTiming(name + "doChunkUnload")
+		doTickPending = TimingsManager.getTiming(name + "doTickPending")
+		doChunkGC = TimingsManager.getTiming(name + "doChunkGC")
+		doTick = TimingsManager.getTiming(name + "doTick")
+		tickChunks = TimingsManager.getTiming(name + "tickChunks")
+		entityTick = TimingsManager.getTiming(name + "entityTick")
+		blockEntityTick = TimingsManager.getTiming(name + "blockEntityTick")
+		syncChunkSendTimer = TimingsManager.getTiming(name + "syncChunkSend")
+		syncChunkSendPrepareTimer = TimingsManager.getTiming(name + "syncChunkSendPrepare")
+		syncChunkLoadTimer = TimingsManager.getTiming(name + "syncChunkLoad")
+		syncChunkLoadDataTimer = TimingsManager.getTiming(name + "syncChunkLoad - Data")
+		syncChunkLoadEntitiesTimer = TimingsManager.getTiming(name + "syncChunkLoad - Entities")
+		syncChunkLoadBlockEntitiesTimer = TimingsManager.getTiming(name + "syncChunkLoad - BlockEntities")
+	}
 }

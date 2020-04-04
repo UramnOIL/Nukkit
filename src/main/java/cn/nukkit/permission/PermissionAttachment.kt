@@ -1,99 +1,68 @@
-package cn.nukkit.permission;
+package cn.nukkit.permission
 
-import cn.nukkit.plugin.Plugin;
-import cn.nukkit.utils.PluginException;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import cn.nukkit.plugin.Plugin
+import cn.nukkit.utils.PluginException
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class PermissionAttachment {
+class PermissionAttachment(val plugin: Plugin, val permissible: Permissible) {
+	var removalCallback: PermissionRemovedExecutor? = null
+	val permissions: MutableMap<String, Boolean> = HashMap()
 
-    private PermissionRemovedExecutor removed = null;
+	init {
+		if (!plugin.isEnabled) {
+			throw PluginException("Plugin " + plugin.description.name + " is disabled")
+		}
+	}
 
-    private final Map<String, Boolean> permissions = new HashMap<>();
+	fun clearPermissions() {
+		permissions.clear()
+		permissible.recalculatePermissions()
+	}
 
-    private Permissible permissible;
+	fun setPermissions(permissions: Map<String, Boolean>) {
+		permissions.forEach { (t, u) ->
+			this.permissions[t] = u
+		}
+		permissible.recalculatePermissions()
+	}
 
-    private Plugin plugin;
+	fun unsetPermissions(permissions: List<String>) {
+		permissions.forEach {
+			this.permissions.remove(it)
+		}
+		permissible.recalculatePermissions()
+	}
 
-    public PermissionAttachment(Plugin plugin, Permissible permissible) {
-        if (!plugin.isEnabled()) {
-            throw new PluginException("Plugin " + plugin.getDescription().getName() + " is disabled");
-        }
-        this.permissible = permissible;
-        this.plugin = plugin;
-    }
+	fun setPermission(permission: Permission, value: Boolean) {
+		this.setPermission(permission.name, value)
+	}
 
-    public Plugin getPlugin() {
-        return plugin;
-    }
+	fun setPermission(name: String, value: Boolean) {
+		if (permissions.containsKey(name)) {
+			if (permissions[name]!!.equals(value)) {
+				return
+			}
+			permissions.remove(name)
+		}
+		permissions[name] = value
+		permissible.recalculatePermissions()
+	}
 
-    public void setRemovalCallback(PermissionRemovedExecutor executor) {
-        this.removed = executor;
-    }
+	fun unsetPermission(permission: Permission, value: Boolean) {
+		this.unsetPermission(permission.name, value)
+	}
 
-    public PermissionRemovedExecutor getRemovalCallback() {
-        return removed;
-    }
+	fun unsetPermission(name: String, value: Boolean) {
+		if (permissions.containsKey(name)) {
+			permissions.remove(name)
+			permissible.recalculatePermissions()
+		}
+	}
 
-    public Map<String, Boolean> getPermissions() {
-        return permissions;
-    }
-
-    public void clearPermissions() {
-        this.permissions.clear();
-        this.permissible.recalculatePermissions();
-    }
-
-    public void setPermissions(Map<String, Boolean> permissions) {
-        for (Map.Entry<String, Boolean> entry : permissions.entrySet()) {
-            String key = entry.getKey();
-            Boolean value = entry.getValue();
-            this.permissions.put(key, value);
-        }
-        this.permissible.recalculatePermissions();
-    }
-
-    public void unsetPermissions(List<String> permissions) {
-        for (String node : permissions) {
-            this.permissions.remove(node);
-        }
-        this.permissible.recalculatePermissions();
-    }
-
-    public void setPermission(Permission permission, boolean value) {
-        this.setPermission(permission.getName(), value);
-    }
-
-    public void setPermission(String name, boolean value) {
-        if (this.permissions.containsKey(name)) {
-            if (this.permissions.get(name).equals(value)) {
-                return;
-            }
-            this.permissions.remove(name);
-        }
-        this.permissions.put(name, value);
-        this.permissible.recalculatePermissions();
-    }
-
-    public void unsetPermission(Permission permission, boolean value) {
-        this.unsetPermission(permission.getName(), value);
-    }
-
-    public void unsetPermission(String name, boolean value) {
-        if (this.permissions.containsKey(name)) {
-            this.permissions.remove(name);
-            this.permissible.recalculatePermissions();
-        }
-    }
-
-    public void remove() {
-        this.permissible.removeAttachment(this);
-    }
-
+	fun remove() {
+		permissible.removeAttachment(this)
+	}
 }

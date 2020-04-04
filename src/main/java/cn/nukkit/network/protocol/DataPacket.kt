@@ -1,78 +1,69 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.Server;
-import cn.nukkit.raknet.protocol.EncapsulatedPacket;
-import cn.nukkit.utils.Binary;
-import cn.nukkit.utils.BinaryStream;
-import cn.nukkit.utils.Zlib;
+import cn.nukkit.Server
+import cn.nukkit.raknet.protocol.EncapsulatedPacket
+import cn.nukkit.utils.Binary
+import cn.nukkit.utils.BinaryStream
+import cn.nukkit.utils.Zlib
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public abstract class DataPacket extends BinaryStream implements Cloneable {
+abstract class DataPacket : BinaryStream(), Cloneable {
+	var isEncoded = false
+	var channel = 0
+	var encapsulatedPacket: EncapsulatedPacket? = null
+	var reliability: Byte = 0
+	var orderIndex: Integer? = null
+	var orderChannel: Integer? = null
+	abstract fun pid(): Byte
+	abstract fun decode()
+	abstract fun encode()
 
-    public boolean isEncoded = false;
-    private int channel = 0;
+	@Override
+	fun reset(): DataPacket? {
+		super.reset()
+		this.putUnsignedVarInt(pid() and 0xff)
+		return this
+	}
 
-    public EncapsulatedPacket encapsulatedPacket;
-    public byte reliability;
-    public Integer orderIndex = null;
-    public Integer orderChannel = null;
+	fun clean(): DataPacket? {
+		this.setBuffer(null)
+		this.setOffset(0)
+		isEncoded = false
+		return this
+	}
 
-    public abstract byte pid();
+	@Override
+	fun clone(): DataPacket? {
+		return try {
+			super.clone() as DataPacket?
+		} catch (e: CloneNotSupportedException) {
+			null
+		}
+	}
 
-    public abstract void decode();
+	fun compress(): BatchPacket? {
+		return compress(Server.instance.networkCompressionLevel)
+	}
 
-    public abstract void encode();
-
-    @Override
-    public DataPacket reset() {
-        super.reset();
-        this.putUnsignedVarInt(this.pid() & 0xff);
-        return this;
-    }
-
-    public void setChannel(int channel) {
-        this.channel = channel;
-    }
-
-    public int getChannel() {
-        return channel;
-    }
-
-    public DataPacket clean() {
-        this.setBuffer(null);
-        this.setOffset(0);
-        this.isEncoded = false;
-        return this;
-    }
-
-    @Override
-    public DataPacket clone() {
-        try {
-            return (DataPacket) super.clone();
-        } catch (CloneNotSupportedException e) {
-            return null;
-        }
-    }
-
-    public BatchPacket compress() {
-        return compress(Server.getInstance().networkCompressionLevel);
-    }
-
-    public BatchPacket compress(int level) {
-        BatchPacket batch = new BatchPacket();
-        byte[][] batchPayload = new byte[2][];
-        byte[] buf = getBuffer();
-        batchPayload[0] = Binary.writeUnsignedVarInt(buf.length);
-        batchPayload[1] = buf;
-        byte[] data = Binary.appendBytes(batchPayload);
-        try {
-            batch.payload = Zlib.deflate(data, level);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return batch;
-    }
+	fun compress(level: Int): BatchPacket? {
+		val batch = BatchPacket()
+		val batchPayload = arrayOfNulls<ByteArray?>(2)
+		val buf: ByteArray = getBuffer()
+		batchPayload[0] = Binary.writeUnsignedVarInt(buf.size)
+		batchPayload[1] = buf
+		val data: ByteArray = Binary.appendBytes(batchPayload)
+		try {
+			batch!!.payload = Zlib.deflate(data, level)
+		} catch (e: Exception) {
+			throw RuntimeException(e)
+		}
+		return batch
+	}
 }

@@ -1,38 +1,42 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
-
-import java.util.UUID;
+import lombok.ToString
+import java.util.UUID
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString(exclude = "data")
-public class ResourcePackChunkDataPacket extends DataPacket {
+class ResourcePackChunkDataPacket : DataPacket() {
+	var packId: UUID? = null
+	var chunkIndex = 0
+	var progress: Long = 0
+	var data: ByteArray?
 
-    public static final byte NETWORK_ID = ProtocolInfo.RESOURCE_PACK_CHUNK_DATA_PACKET;
+	@Override
+	override fun decode() {
+		packId = UUID.fromString(this.getString())
+		chunkIndex = this.getLInt()
+		progress = this.getLLong()
+		data = this.getByteArray()
+	}
 
-    public UUID packId;
-    public int chunkIndex;
-    public long progress;
-    public byte[] data;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putString(packId.toString())
+		this.putLInt(chunkIndex)
+		this.putLLong(progress)
+		this.putByteArray(data)
+	}
 
-    @Override
-    public void decode() {
-        this.packId = UUID.fromString(this.getString());
-        this.chunkIndex = this.getLInt();
-        this.progress = this.getLLong();
-        this.data = this.getByteArray();
-    }
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putString(this.packId.toString());
-        this.putLInt(this.chunkIndex);
-        this.putLLong(this.progress);
-        this.putByteArray(this.data);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.RESOURCE_PACK_CHUNK_DATA_PACKET
+	}
 }

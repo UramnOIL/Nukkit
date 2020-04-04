@@ -1,115 +1,70 @@
-package cn.nukkit.permission;
+package cn.nukkit.permission
 
-import cn.nukkit.Server;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.TreeMap;
+import cn.nukkit.Server
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.text.ParseException
+import java.util.*
+import java.text.SimpleDateFormat
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class BanEntry {
-    public static final String format = "yyyy-MM-dd HH:mm:ss Z";
+class BanEntry(val name: String) {
+	companion object {
+		val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z")
 
-    private final String name;
-    private Date creationDate = null;
-    private String source = "(Unknown)";
-    private Date expirationDate = null;
-    private String reason = "Banned by an operator.";
+		fun fromString(str: String): BanEntry {
+			val map = Gson().fromJson<Map<String, String>>(str, object : TypeToken<Map<String, String>>() {}.type)
+			val banEntry = BanEntry(map["name"] ?: error("This string does not contain property of name: $str"))
+			try {
+				banEntry.creationDate = dateFormat.parse(map["creationDate"])
+				banEntry.expirationDate = if(map["expireDate"] != ("Forever")) dateFormat.parse(map["expireDate"]) else null
+			} catch (e: ParseException) {
+				Server.instance!!.logger.logException(e)
+			}
+			banEntry.source = map["source"].toString()
+			banEntry.reason = map["reason"].toString()
+			return banEntry
+		}
 
-    public BanEntry(String name) {
-        this.name = name.toLowerCase();
-        this.creationDate = new Date();
-    }
 
-    public String getName() {
-        return name;
-    }
+		fun fromMap(map: Map<String, String>): BanEntry {
+			val banEntry = BanEntry(map["name"] ?: error("This map does not contain property of name: $map"))
+			try {
+				banEntry.creationDate = dateFormat.parse(map["creationDate"])
+				banEntry.expirationDate = if(!map["expireDate"].equals("Forever")) dateFormat.parse(map["expireDate"]) else null
+			} catch (e: ParseException) {
+				Server.instance!!.logger.logException(e)
+			}
+			banEntry.source = map["source"].toString()
+			banEntry.reason = map["reason"].toString()
+			return banEntry
+		}
+	}
+	var creationDate = Date()
+	var source = "(Unknown)"
+	var expirationDate: Date? = null
+	var reason = "Banned by an operator."
 
-    public Date getCreationDate() {
-        return creationDate;
-    }
+	fun hasExpired(): Boolean {
+		val now = Date()
+		return expirationDate is Date && expirationDate!!.before(now)
+	}
 
-    public void setCreationDate(Date creationDate) {
-        this.creationDate = creationDate;
-    }
+	val map: Map<String, String>
+		get() {
+			val map: MutableMap<String, String> = mutableMapOf()
+			map["name"] = name
+			map["creationDate"] = dateFormat.format(creationDate)
+			map["source"] = source
+			map["expireDate"] = if (expirationDate != null) dateFormat.format(expirationDate) else "Forever"
+			map["reason"] = reason
+			return map
+		}
 
-    public String getSource() {
-        return source;
-    }
-
-    public void setSource(String source) {
-        this.source = source;
-    }
-
-    public Date getExpirationDate() {
-        return expirationDate;
-    }
-
-    public void setExpirationDate(Date expirationDate) {
-        this.expirationDate = expirationDate;
-    }
-
-    public boolean hasExpired() {
-        Date now = new Date();
-        return this.expirationDate != null && this.expirationDate.before(now);
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
-
-    public LinkedHashMap<String, String> getMap() {
-        LinkedHashMap<String, String> map = new LinkedHashMap<>();
-        map.put("name", getName());
-        map.put("creationDate", new SimpleDateFormat(format).format(getCreationDate()));
-        map.put("source", this.getSource());
-        map.put("expireDate", getExpirationDate() != null ? new SimpleDateFormat(format).format(getExpirationDate()) : "Forever");
-        map.put("reason", this.getReason());
-        return map;
-    }
-
-    public static BanEntry fromMap(Map<String, String> map) {
-        BanEntry banEntry = new BanEntry(map.get("name"));
-        try {
-            banEntry.setCreationDate(new SimpleDateFormat(format).parse(map.get("creationDate")));
-            banEntry.setExpirationDate(!map.get("expireDate").equals("Forever") ? new SimpleDateFormat(format).parse(map.get("expireDate")) : null);
-        } catch (ParseException e) {
-            Server.getInstance().getLogger().logException(e);
-        }
-        banEntry.setSource(map.get("source"));
-        banEntry.setReason(map.get("reason"));
-        return banEntry;
-    }
-
-    public String getString() {
-        return new Gson().toJson(this.getMap());
-    }
-
-    public static BanEntry fromString(String str) {
-        Map<String, String> map = new Gson().fromJson(str, new TypeToken<TreeMap<String, String>>() {
-        }.getType());
-        BanEntry banEntry = new BanEntry(map.get("name"));
-        try {
-            banEntry.setCreationDate(new SimpleDateFormat(format).parse(map.get("creationDate")));
-            banEntry.setExpirationDate(!map.get("expireDate").equals("Forever") ? new SimpleDateFormat(format).parse(map.get("expireDate")) : null);
-        } catch (ParseException e) {
-            Server.getInstance().getLogger().logException(e);
-        }
-        banEntry.setSource(map.get("source"));
-        banEntry.setReason(map.get("reason"));
-        return banEntry;
-    }
-
+	override fun toString(): String {
+		return Gson().toJson(this.map)
+	}
 }

@@ -1,25 +1,20 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.protocol.Packet;
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class ADVERTISE_SYSTEM extends UNCONNECTED_PONG {
-    public static final byte ID = (byte) 0x1d;
+class ADVERTISE_SYSTEM : UNCONNECTED_PONG() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return ADVERTISE_SYSTEM()
+		}
+	}
 
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new ADVERTISE_SYSTEM();
-        }
-
-    }
+	companion object {
+		const val iD = 0x1d.toByte()
+	}
 }

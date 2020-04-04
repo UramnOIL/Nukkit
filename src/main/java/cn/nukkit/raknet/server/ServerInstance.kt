@@ -1,22 +1,16 @@
-package cn.nukkit.raknet.server;
+package cn.nukkit.raknet.server
 
-import cn.nukkit.raknet.protocol.EncapsulatedPacket;
+import cn.nukkit.raknet.protocol.EncapsulatedPacket
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public interface ServerInstance {
-
-    void openSession(String identifier, String address, int port, long clientID);
-
-    void closeSession(String identifier, String reason);
-
-    void handleEncapsulated(String identifier, EncapsulatedPacket packet, int flags);
-
-    void handleRaw(String address, int port, byte[] payload);
-
-    void notifyACK(String identifier, int identifierACK);
-
-    void handleOption(String option, String value);
+interface ServerInstance {
+	fun openSession(identifier: String?, address: String?, port: Int, clientID: Long)
+	fun closeSession(identifier: String?, reason: String?)
+	fun handleEncapsulated(identifier: String?, packet: EncapsulatedPacket?, flags: Int)
+	fun handleRaw(address: String?, port: Int, payload: ByteArray?)
+	fun notifyACK(identifier: String?, identifierACK: Int)
+	fun handleOption(option: String?, value: String?)
 }

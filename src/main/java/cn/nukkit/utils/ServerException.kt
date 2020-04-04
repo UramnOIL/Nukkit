@@ -1,15 +1,10 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class ServerException extends RuntimeException {
-    public ServerException(String message) {
-        super(message);
-    }
-
-    public ServerException(String message, Throwable cause) {
-        super(message, cause);
-    }
+open class ServerException : RuntimeException {
+	constructor(message: String?) : super(message) {}
+	constructor(message: String?, cause: Throwable?) : super(message, cause) {}
 }

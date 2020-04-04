@@ -1,48 +1,40 @@
-package cn.nukkit.raknet.protocol.packet;
+package cn.nukkit.raknet.protocol.packet
 
-import cn.nukkit.raknet.RakNet;
-import cn.nukkit.raknet.protocol.Packet;
+import cn.nukkit.raknet.RakNet
+import cn.nukkit.raknet.protocol.Packet
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class UNCONNECTED_PONG extends Packet {
-    public static final byte ID = (byte) 0x1c;
+open class UNCONNECTED_PONG : Packet() {
 
-    @Override
-    public byte getID() {
-        return ID;
-    }
+	var pingID: Long = 0
+	var serverID: Long = 0
+	var serverName: String? = null
+	override fun encode() {
+		super.encode()
+		putLong(pingID)
+		putLong(serverID)
+		put(RakNet.MAGIC)
+		putString(serverName!!)
+	}
 
-    public long pingID;
-    public long serverID;
-    public String serverName;
+	override fun decode() {
+		super.decode()
+		pingID = this.long
+		serverID = this.long
+		offset += 16 //skip magic bytes todo:check magic?
+		serverName = this.string
+	}
 
-    @Override
-    public void encode() {
-        super.encode();
-        this.putLong(this.pingID);
-        this.putLong(this.serverID);
-        this.put(RakNet.MAGIC);
-        this.putString(this.serverName);
-    }
+	class Factory : PacketFactory {
+		override fun create(): Packet {
+			return UNCONNECTED_PONG()
+		}
+	}
 
-    @Override
-    public void decode() {
-        super.decode();
-        this.pingID = this.getLong();
-        this.serverID = this.getLong();
-        this.offset += 16; //skip magic bytes todo:check magic?
-        this.serverName = this.getString();
-    }
-
-    public static final class Factory implements Packet.PacketFactory {
-
-        @Override
-        public Packet create() {
-            return new UNCONNECTED_PONG();
-        }
-
-    }
+	companion object {
+		const val iD = 0x1c.toByte()
+	}
 }

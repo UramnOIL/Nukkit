@@ -1,31 +1,34 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author Nukkit Project Team
  */
 @ToString
-public class HurtArmorPacket extends DataPacket {
+class HurtArmorPacket : DataPacket() {
+	var health = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.HURT_ARMOR_PACKET;
+	@Override
+	override fun decode() {
+	}
 
-    public int health;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putVarInt(health)
+	}
 
-    @Override
-    public void decode() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putVarInt(this.health);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.HURT_ARMOR_PACKET
+	}
 }

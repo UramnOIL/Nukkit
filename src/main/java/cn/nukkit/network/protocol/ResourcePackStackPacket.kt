@@ -1,48 +1,50 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import cn.nukkit.resourcepacks.ResourcePack;
-import lombok.ToString;
+import cn.nukkit.resourcepacks.ResourcePack
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class ResourcePackStackPacket extends DataPacket {
+class ResourcePackStackPacket : DataPacket() {
+	var mustAccept = false
+	var behaviourPackStack: Array<ResourcePack?>? = arrayOfNulls<ResourcePack?>(0)
+	var resourcePackStack: Array<ResourcePack?>? = arrayOfNulls<ResourcePack?>(0)
+	var isExperimental = false
+	var gameVersion: String? = ProtocolInfo.MINECRAFT_VERSION_NETWORK
 
-    public static final byte NETWORK_ID = ProtocolInfo.RESOURCE_PACK_STACK_PACKET;
+	@Override
+	override fun decode() {
+	}
 
-    public boolean mustAccept = false;
-    public ResourcePack[] behaviourPackStack = new ResourcePack[0];
-    public ResourcePack[] resourcePackStack = new ResourcePack[0];
-    public boolean isExperimental = false;
-    public String gameVersion = ProtocolInfo.MINECRAFT_VERSION_NETWORK;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putBoolean(mustAccept)
+		this.putUnsignedVarInt(behaviourPackStack!!.size)
+		for (entry in behaviourPackStack!!) {
+			this.putString(entry.packId.toString())
+			this.putString(entry.packVersion)
+			this.putString("") //TODO: subpack name
+		}
+		this.putUnsignedVarInt(resourcePackStack!!.size)
+		for (entry in resourcePackStack!!) {
+			this.putString(entry.packId.toString())
+			this.putString(entry.packVersion)
+			this.putString("") //TODO: subpack name
+		}
+		this.putBoolean(isExperimental)
+		this.putString(gameVersion)
+	}
 
-    @Override
-    public void decode() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putBoolean(this.mustAccept);
-
-        this.putUnsignedVarInt(this.behaviourPackStack.length);
-        for (ResourcePack entry : this.behaviourPackStack) {
-            this.putString(entry.getPackId().toString());
-            this.putString(entry.getPackVersion());
-            this.putString(""); //TODO: subpack name
-        }
-
-        this.putUnsignedVarInt(this.resourcePackStack.length);
-        for (ResourcePack entry : this.resourcePackStack) {
-            this.putString(entry.getPackId().toString());
-            this.putString(entry.getPackVersion());
-            this.putString(""); //TODO: subpack name
-        }
-        this.putBoolean(this.isExperimental);
-        this.putString(this.gameVersion);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.RESOURCE_PACK_STACK_PACKET
+	}
 }

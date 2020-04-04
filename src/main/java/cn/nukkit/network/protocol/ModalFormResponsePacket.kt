@@ -1,26 +1,28 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class ModalFormResponsePacket extends DataPacket {
+class ModalFormResponsePacket : DataPacket() {
+	var formId = 0
+	var data: String? = null
 
-    public int formId;
-    public String data;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.MODAL_FORM_RESPONSE_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.MODAL_FORM_RESPONSE_PACKET;
-    }
+	@Override
+	override fun decode() {
+		formId = this.getVarInt()
+		data = this.getString() //Data will be null if player close form without submit (by cross button or ESC)
+	}
 
-    @Override
-    public void decode() {
-        this.formId = this.getVarInt();
-        this.data = this.getString(); //Data will be null if player close form without submit (by cross button or ESC)
-    }
-
-    @Override
-    public void encode() {
-
-    }
+	@Override
+	override fun encode() {
+	}
 }

@@ -1,27 +1,30 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class NetworkStackLatencyPacket extends DataPacket {
+class NetworkStackLatencyPacket : DataPacket() {
+	var timestamp: Long = 0
+	var unknownBool = false
 
-    public long timestamp;
-    public boolean unknownBool;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.NETWORK_STACK_LATENCY_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.NETWORK_STACK_LATENCY_PACKET;
-    }
+	@Override
+	override fun decode() {
+		timestamp = this.getLLong()
+	}
 
-    @Override
-    public void decode() {
-        timestamp = this.getLLong();
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putLLong(timestamp);
-        this.putBoolean(unknownBool);
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putLLong(timestamp)
+		this.putBoolean(unknownBool)
+	}
 }

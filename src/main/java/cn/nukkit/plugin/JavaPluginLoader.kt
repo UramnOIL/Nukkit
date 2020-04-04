@@ -1,166 +1,137 @@
-package cn.nukkit.plugin;
+package cn.nukkit.plugin
 
-import cn.nukkit.Server;
-import cn.nukkit.event.plugin.PluginDisableEvent;
-import cn.nukkit.event.plugin.PluginEnableEvent;
-import cn.nukkit.utils.PluginException;
-import cn.nukkit.utils.Utils;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.regex.Pattern;
+import cn.nukkit.Server
+import cn.nukkit.event.plugin.PluginDisableEvent
+import cn.nukkit.event.plugin.PluginEnableEvent
+import cn.nukkit.utils.PluginException
+import cn.nukkit.utils.Utils
+import java.io.File
+import java.io.IOException
+import java.util.*
+import java.util.jar.JarFile
+import java.util.regex.Pattern
 
 /**
  * Created by Nukkit Team.
  */
-public class JavaPluginLoader implements PluginLoader {
+class JavaPluginLoader(private val server: Server) : PluginLoader {
+	private val classes: MutableMap<String, Class<*>> = HashMap()
+	private val classLoaders: MutableMap<String?, PluginClassLoader> = HashMap()
 
-    private final Server server;
+	@Throws(Exception::class)
+	override fun loadPlugin(file: File?): Plugin? {
+		val description = this.getPluginDescription(file)
+		if (description != null) {
+			server.logger.info(server.language.translateString("nukkit.plugin.load", description.fullName))
+			val dataFolder = File(file!!.parentFile, description.name)
+			check(!(dataFolder.exists() && !dataFolder.isDirectory)) { "Projected dataFolder '" + dataFolder.toString() + "' for " + description.name + " exists and is not a directory" }
+			val className = description.main
+			val classLoader = PluginClassLoader(this, this.javaClass.classLoader, file)
+			classLoaders[description.name] = classLoader
+			val plugin: PluginBase
+			try {
+				val javaClass = classLoader.loadClass(className)
+				if (!PluginBase::class.java.isAssignableFrom(javaClass)) {
+					throw PluginException("Main class `" + description.main + "' does not extend PluginBase")
+				}
+				try {
+					val pluginClass = javaClass.asSubclass(PluginBase::class.java) as Class<PluginBase>
+					plugin = pluginClass.newInstance()
+					initPlugin(plugin, description, dataFolder, file)
+					return plugin
+				} catch (e: ClassCastException) {
+					throw PluginException("Error whilst initializing main class `" + description.main + "'", e)
+				} catch (e: InstantiationException) {
+					Server.instance!!.logger.logException(e)
+				} catch (e: IllegalAccessException) {
+					Server.instance!!.logger.logException(e)
+				}
+			} catch (e: ClassNotFoundException) {
+				throw PluginException("Couldn't load plugin " + description.name + ": main class not found")
+			}
+		}
+		return null
+	}
 
-    private final Map<String, Class> classes = new HashMap<>();
-    private final Map<String, PluginClassLoader> classLoaders = new HashMap<>();
+	@Throws(Exception::class)
+	override fun loadPlugin(filename: String?): Plugin? {
+		return this.loadPlugin(File(filename))
+	}
 
-    public JavaPluginLoader(Server server) {
-        this.server = server;
-    }
+	override fun getPluginDescription(file: File?): PluginDescription? {
+		try {
+			JarFile(file).use { jar ->
+				var entry = jar.getJarEntry("nukkit.yml")
+				if (entry == null) {
+					entry = jar.getJarEntry("plugin.yml")
+					if (entry == null) {
+						return null
+					}
+				}
+				jar.getInputStream(entry).use { stream -> return PluginDescription(Utils.readFile(stream)) }
+			}
+		} catch (e: IOException) {
+			return null
+		}
+	}
 
-    @Override
-    public Plugin loadPlugin(File file) throws Exception {
-        PluginDescription description = this.getPluginDescription(file);
-        if (description != null) {
-            this.server.getLogger().info(this.server.getLanguage().translateString("nukkit.plugin.load", description.getFullName()));
-            File dataFolder = new File(file.getParentFile(), description.getName());
-            if (dataFolder.exists() && !dataFolder.isDirectory()) {
-                throw new IllegalStateException("Projected dataFolder '" + dataFolder.toString() + "' for " + description.getName() + " exists and is not a directory");
-            }
+	override fun getPluginDescription(filename: String?): PluginDescription? {
+		return this.getPluginDescription(File(filename))
+	}
 
-            String className = description.getMain();
-            PluginClassLoader classLoader = new PluginClassLoader(this, this.getClass().getClassLoader(), file);
-            this.classLoaders.put(description.getName(), classLoader);
-            PluginBase plugin;
-            try {
-                Class javaClass = classLoader.loadClass(className);
+	override fun getPluginFilters(): Array<Pattern> {
+		return arrayOf(Pattern.compile("^.+\\.jar$"))
+	}
 
-                if (!PluginBase.class.isAssignableFrom(javaClass)) {
-                    throw new PluginException("Main class `" + description.getMain() + "' does not extend PluginBase");
-                }
+	private fun initPlugin(plugin: PluginBase, description: PluginDescription, dataFolder: File, file: File?) {
+		plugin.init(this, server, description, dataFolder, file)
+		plugin.onLoad()
+	}
 
-                try {
-                    Class<PluginBase> pluginClass = (Class<PluginBase>) javaClass.asSubclass(PluginBase.class);
+	override fun enablePlugin(plugin: Plugin) {
+		if (plugin is PluginBase && !plugin.isEnabled()) {
+			server.logger.info(server.language.translateString("nukkit.plugin.enable", plugin.getDescription()!!.fullName))
+			plugin.isEnabled = true
+			server.pluginManager.callEvent(PluginEnableEvent(plugin))
+		}
+	}
 
-                    plugin = pluginClass.newInstance();
-                    this.initPlugin(plugin, description, dataFolder, file);
+	override fun disablePlugin(plugin: Plugin) {
+		if (plugin is PluginBase && plugin.isEnabled()) {
+			server.logger.info(server.language.translateString("nukkit.plugin.disable", plugin.getDescription()!!.fullName))
+			server.serviceManager.cancel(plugin)
+			server.pluginManager.callEvent(PluginDisableEvent(plugin))
+			plugin.isEnabled = false
+		}
+	}
 
-                    return plugin;
-                } catch (ClassCastException e) {
-                    throw new PluginException("Error whilst initializing main class `" + description.getMain() + "'", e);
-                } catch (InstantiationException | IllegalAccessException e) {
-                    Server.getInstance().getLogger().logException(e);
-                }
+	fun getClassByName(name: String): Class<*>? {
+		var cachedClass = classes[name]
+		if (cachedClass != null) {
+			return cachedClass
+		} else {
+			for (loader in classLoaders.values) {
+				try {
+					cachedClass = loader.findClass(name, false)
+				} catch (e: ClassNotFoundException) {
+					//ignore
+				}
+				if (cachedClass != null) {
+					return cachedClass
+				}
+			}
+		}
+		return null
+	}
 
-            } catch (ClassNotFoundException e) {
-                throw new PluginException("Couldn't load plugin " + description.getName() + ": main class not found");
-            }
-        }
+	fun setClass(name: String, clazz: Class<*>) {
+		if (!classes.containsKey(name)) {
+			classes[name] = clazz
+		}
+	}
 
-        return null;
-    }
+	private fun removeClass(name: String) {
+		val clazz = classes.remove(name)!!
+	}
 
-    @Override
-    public Plugin loadPlugin(String filename) throws Exception {
-        return this.loadPlugin(new File(filename));
-    }
-
-    @Override
-    public PluginDescription getPluginDescription(File file) {
-        try (JarFile jar = new JarFile(file)) {
-            JarEntry entry = jar.getJarEntry("nukkit.yml");
-            if (entry == null) {
-                entry = jar.getJarEntry("plugin.yml");
-                if (entry == null) {
-                    return null;
-                }
-            }
-            try (InputStream stream = jar.getInputStream(entry)) {
-                return new PluginDescription(Utils.readFile(stream));
-            }
-        } catch (IOException e) {
-            return null;
-        }
-    }
-
-    @Override
-    public PluginDescription getPluginDescription(String filename) {
-        return this.getPluginDescription(new File(filename));
-    }
-
-    @Override
-    public Pattern[] getPluginFilters() {
-        return new Pattern[]{Pattern.compile("^.+\\.jar$")};
-    }
-
-    private void initPlugin(PluginBase plugin, PluginDescription description, File dataFolder, File file) {
-        plugin.init(this, this.server, description, dataFolder, file);
-        plugin.onLoad();
-    }
-
-    @Override
-    public void enablePlugin(Plugin plugin) {
-        if (plugin instanceof PluginBase && !plugin.isEnabled()) {
-            this.server.getLogger().info(this.server.getLanguage().translateString("nukkit.plugin.enable", plugin.getDescription().getFullName()));
-
-            ((PluginBase) plugin).setEnabled(true);
-
-            this.server.getPluginManager().callEvent(new PluginEnableEvent(plugin));
-        }
-    }
-
-    @Override
-    public void disablePlugin(Plugin plugin) {
-        if (plugin instanceof PluginBase && plugin.isEnabled()) {
-            this.server.getLogger().info(this.server.getLanguage().translateString("nukkit.plugin.disable", plugin.getDescription().getFullName()));
-
-            this.server.getServiceManager().cancel(plugin);
-
-            this.server.getPluginManager().callEvent(new PluginDisableEvent(plugin));
-
-            ((PluginBase) plugin).setEnabled(false);
-        }
-    }
-
-    Class<?> getClassByName(final String name) {
-        Class<?> cachedClass = classes.get(name);
-
-        if (cachedClass != null) {
-            return cachedClass;
-        } else {
-            for (PluginClassLoader loader : this.classLoaders.values()) {
-
-                try {
-                    cachedClass = loader.findClass(name, false);
-                } catch (ClassNotFoundException e) {
-                    //ignore
-                }
-                if (cachedClass != null) {
-                    return cachedClass;
-                }
-            }
-        }
-        return null;
-    }
-
-    void setClass(final String name, final Class<?> clazz) {
-        if (!classes.containsKey(name)) {
-            classes.put(name, clazz);
-        }
-    }
-
-    private void removeClass(String name) {
-        Class<?> clazz = classes.remove(name);
-    }
 }

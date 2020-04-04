@@ -1,31 +1,35 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author Nukkit Project Team
  */
 @ToString
-public class SetDifficultyPacket extends DataPacket {
+class SetDifficultyPacket : DataPacket() {
+	var difficulty = 0
 
-    public static final byte NETWORK_ID = ProtocolInfo.SET_DIFFICULTY_PACKET;
+	@Override
+	override fun decode() {
+		difficulty = this.getUnsignedVarInt() as Int
+	}
 
-    public int difficulty;
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putUnsignedVarInt(difficulty)
+	}
 
-    @Override
-    public void decode() {
-        this.difficulty = (int) this.getUnsignedVarInt();
-    }
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putUnsignedVarInt(this.difficulty);
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.SET_DIFFICULTY_PACKET
+	}
 }

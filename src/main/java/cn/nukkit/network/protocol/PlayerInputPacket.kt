@@ -1,37 +1,39 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * @author Nukkit Project Team
  */
 @ToString
-public class PlayerInputPacket extends DataPacket {
+class PlayerInputPacket : DataPacket() {
+	var motionX = 0f
+	var motionY = 0f
+	var jumping = false
+	var sneaking = false
 
-    public static final byte NETWORK_ID = ProtocolInfo.PLAYER_INPUT_PACKET;
+	@Override
+	override fun decode() {
+		motionX = this.getLFloat()
+		motionY = this.getLFloat()
+		jumping = this.getBoolean()
+		sneaking = this.getBoolean()
+	}
 
-    public float motionX;
-    public float motionY;
+	@Override
+	override fun encode() {
+	}
 
-    public boolean jumping;
-    public boolean sneaking;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public void decode() {
-        this.motionX = this.getLFloat();
-        this.motionY = this.getLFloat();
-        this.jumping = this.getBoolean();
-        this.sneaking = this.getBoolean();
-    }
-
-    @Override
-    public void encode() {
-
-    }
-
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
-
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.PLAYER_INPUT_PACKET
+	}
 }

@@ -1,12 +1,6 @@
-package cn.nukkit.plugin;
+package cn.nukkit.plugin
 
 /**
  * Created on 15-12-13.
  */
-public class LibraryLoadException extends RuntimeException {
-
-    public LibraryLoadException(Library library) {
-        super("Load library " + library.getArtifactId() + " failed!");
-    }
-
-}
+class LibraryLoadException(library: Library) : RuntimeException("Load library " + library.artifactId + " failed!")

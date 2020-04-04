@@ -1,194 +1,113 @@
-package cn.nukkit.permission;
+package cn.nukkit.permission
 
-import cn.nukkit.Server;
-
-import java.util.*;
+import cn.nukkit.Server
+import java.util.*
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
-public class Permission {
+class Permission(val name: String, val description: String = DEFAULT_PERMISSION, var defaultValue: String = "", val children: MutableMap<String, Boolean> = mutableMapOf()) {
+	companion object {
+		const val DEFAULT_OP = "op"
+		const val DEFAULT_NOT_OP = "notop"
+		const val DEFAULT_TRUE = "true"
+		const val DEFAULT_FALSE = "false"
+		const val DEFAULT_PERMISSION = DEFAULT_OP
+		fun getByName(value: String): String {
+			return when (value.toLowerCase()) {
+				"op", "isop", "operator", "isoperator", "admin", "isadmin" -> DEFAULT_OP
+				"!op", "notop", "!operator", "notoperator", "!admin", "notadmin" -> DEFAULT_NOT_OP
+				"true" -> DEFAULT_TRUE
+				else -> DEFAULT_FALSE
+			}
+		}
 
-    public final static String DEFAULT_OP = "op";
-    public final static String DEFAULT_NOT_OP = "notop";
-    public final static String DEFAULT_TRUE = "true";
-    public final static String DEFAULT_FALSE = "false";
+		fun loadPermissions(data: Map<String, Any>): List<Permission> {
+			return loadPermissions(data, DEFAULT_OP)
+		}
 
-    public static final String DEFAULT_PERMISSION = DEFAULT_OP;
+		fun loadPermissions(data: Map<String, Any>, defaultValue: String): List<Permission> {
+			val result = mutableListOf<Permission>()
+			data.forEach { (t, u) ->
+				result.add(loadPermission(t, u as Map<String, Any>, defaultValue, result))
+			}
+			return result
+		}
 
-    public static String getByName(String value) {
-        switch (value.toLowerCase()) {
-            case "op":
-            case "isop":
-            case "operator":
-            case "isoperator":
-            case "admin":
-            case "isadmin":
-                return DEFAULT_OP;
+		fun loadPermission(name: String, data: Map<String, Any>): Permission {
+			return loadPermission(name, data, DEFAULT_OP, ArrayList())
+		}
 
-            case "!op":
-            case "notop":
-            case "!operator":
-            case "notoperator":
-            case "!admin":
-            case "notadmin":
-                return DEFAULT_NOT_OP;
+		fun loadPermission(name: String, data: Map<String, Any>, defaultValue: String): Permission {
+			return loadPermission(name, data, defaultValue, ArrayList())
+		}
 
-            case "true":
-                return DEFAULT_TRUE;
+		private fun loadPermission(name: String, data: Map<String, Any>, defaultValue: String, output: MutableList<Permission>): Permission {
+			var defaultValue = defaultValue
+			var desc: String? = null
+			val children = mutableMapOf<String, Boolean>()
+			if (data.containsKey("default")) {
+				val value = getByName(data["default"].toString())
+				defaultValue = value
+			}
+			if (data.containsKey("children")) {
+				if (data["children"] is Map<*, *>) {
+					(data["children"] as Map<String, Object>).forEach { t, u ->
+						if (u is Map<*, *>) {
+							val permission = loadPermission(t, u as Map<String, Object>, defaultValue, output)
+							output.add(permission)
+						}
+						children[t] = true
+					}
+				} else {
+					throw IllegalStateException("'children' key is of wrong type")
+				}
+			}
+			if (data.containsKey("description")) {
+				desc = data["description"] as String
+			}
+			return Permission(name, desc ?: "", defaultValue, children)
+		}
+	}
 
-            default:
-                return DEFAULT_FALSE;
-        }
-    }
+	init {
+		recalculatePermissibles()
+	}
+	var default: String
+		get() = defaultValue
+		set(value) {
+			if (value != defaultValue){
+				defaultValue = value
+				recalculatePermissibles()
+			}
+		}
 
-    private final String name;
+	val permissibles: Set<Permissible>
+		get() = Server.instance.pluginManager.getPermissionSubscriptions(name)
 
-    private String description;
+	fun recalculatePermissibles() {
+		val perms: Set<Permissible> = permissibles
+		Server.instance.pluginManager.recalculatePermissionDefaults(this)
+		perms.forEach {
+			it.recalculatePermissions()
+		}
+	}
 
-    private Map<String, Boolean> children = new HashMap<>();
+	fun addParent(permission: Permission, value: Boolean) {
+		children[name] = value
+		permission.recalculatePermissibles()
+	}
 
-    private String defaultValue;
+	fun addParent(name: String, value: Boolean): Permission {
+		val perm = Server.instance.pluginManager.getPermission(name) ?: run {
+			val perm = Permission(name)
+			Server.instance.pluginManager.addPermission(perm)
+			perm
+		}
+		this.addParent(perm, value)
+		return perm
+	}
 
-    public Permission(String name) {
-        this(name, null, null, new HashMap<>());
-    }
-
-    public Permission(String name, String description) {
-        this(name, description, null, new HashMap<>());
-    }
-
-    public Permission(String name, String description, String defualtValue) {
-        this(name, description, defualtValue, new HashMap<>());
-    }
-
-    public Permission(String name, String description, String defualtValue, Map<String, Boolean> children) {
-        this.name = name;
-        this.description = description != null ? description : "";
-        this.defaultValue = defualtValue != null ? defualtValue : DEFAULT_PERMISSION;
-        this.children = children;
-
-        this.recalculatePermissibles();
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Map<String, Boolean> getChildren() {
-        return children;
-    }
-
-    public String getDefault() {
-        return defaultValue;
-    }
-
-    public void setDefault(String value) {
-        if (!value.equals(this.defaultValue)) {
-            this.defaultValue = value;
-            this.recalculatePermissibles();
-        }
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Set<Permissible> getPermissibles() {
-        return Server.getInstance().getPluginManager().getPermissionSubscriptions(this.name);
-    }
-
-    public void recalculatePermissibles() {
-        Set<Permissible> perms = this.getPermissibles();
-
-        Server.getInstance().getPluginManager().recalculatePermissionDefaults(this);
-
-        for (Permissible p : perms) {
-            p.recalculatePermissions();
-        }
-    }
-
-    public void addParent(Permission permission, boolean value) {
-        this.getChildren().put(this.getName(), value);
-        permission.recalculatePermissibles();
-    }
-
-    public Permission addParent(String name, boolean value) {
-        Permission perm = Server.getInstance().getPluginManager().getPermission(name);
-        if (perm == null) {
-            perm = new Permission(name);
-            Server.getInstance().getPluginManager().addPermission(perm);
-        }
-
-        this.addParent(perm, value);
-
-        return perm;
-    }
-
-    public static List<Permission> loadPermissions(Map<String, Object> data) {
-        return loadPermissions(data, DEFAULT_OP);
-    }
-
-    public static List<Permission> loadPermissions(Map<String, Object> data, String defaultValue) {
-        List<Permission> result = new ArrayList<>();
-        if (data != null) {
-            for (Map.Entry e : data.entrySet()) {
-                String key = (String) e.getKey();
-                Map<String, Object> entry = (Map<String, Object>) e.getValue();
-                result.add(loadPermission(key, entry, defaultValue, result));
-            }
-        }
-        return result;
-    }
-
-    public static Permission loadPermission(String name, Map<String, Object> data) {
-        return loadPermission(name, data, DEFAULT_OP, new ArrayList<>());
-    }
-
-    public static Permission loadPermission(String name, Map<String, Object> data, String defaultValue) {
-        return loadPermission(name, data, defaultValue, new ArrayList<>());
-    }
-
-    public static Permission loadPermission(String name, Map<String, Object> data, String defaultValue, List<Permission> output) {
-        String desc = null;
-        Map<String, Boolean> children = new HashMap<>();
-        if (data.containsKey("default")) {
-            String value = Permission.getByName(String.valueOf(data.get("default")));
-            if (value != null) {
-                defaultValue = value;
-            } else {
-                throw new IllegalStateException("'default' key contained unknown value");
-            }
-        }
-
-        if (data.containsKey("children")) {
-            if (data.get("children") instanceof Map) {
-                for (Map.Entry entry : ((Map<String, Object>) data.get("children")).entrySet()) {
-                    String k = (String) entry.getKey();
-                    Object v = entry.getValue();
-                    if (v instanceof Map) {
-                        Permission permission = loadPermission(k, (Map<String, Object>) v, defaultValue, output);
-                        if (permission != null) {
-                            output.add(permission);
-                        }
-                    }
-                    children.put(k, true);
-                }
-            } else {
-                throw new IllegalStateException("'children' key is of wrong type");
-            }
-        }
-
-        if (data.containsKey("description")) {
-            desc = (String) data.get("description");
-        }
-
-        return new Permission(name, desc, defaultValue, children);
-    }
 
 }

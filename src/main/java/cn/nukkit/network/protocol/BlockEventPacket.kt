@@ -1,36 +1,41 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 /**
  * author: MagicDroidX
  * Nukkit Project
  */
 @ToString
-public class BlockEventPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.BLOCK_EVENT_PACKET;
+class BlockEventPacket : DataPacket() {
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	var x = 0
+	var y = 0
+	var z = 0
+	var case1 = 0
+	var case2 = 0
 
-    public int x;
-    public int y;
-    public int z;
-    public int case1;
-    public int case2;
+	@Override
+	override fun decode() {
+	}
 
-    @Override
-    public void decode() {
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putBlockVector3(x, y, z)
+		this.putVarInt(case1)
+		this.putVarInt(case2)
+	}
 
-    }
-
-    @Override
-    public void encode() {
-        this.reset();
-        this.putBlockVector3(this.x, this.y, this.z);
-        this.putVarInt(this.case1);
-        this.putVarInt(this.case2);
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.BLOCK_EVENT_PACKET
+	}
 }

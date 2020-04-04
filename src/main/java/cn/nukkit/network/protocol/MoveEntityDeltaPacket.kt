@@ -1,76 +1,79 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class MoveEntityDeltaPacket extends DataPacket {
-    public static final byte NETWORK_ID = ProtocolInfo.MOVE_ENTITY_DELTA_PACKET;
+class MoveEntityDeltaPacket : DataPacket() {
+	var flags = 0
+	var xDelta = 0
+	var yDelta = 0
+	var zDelta = 0
+	var yawDelta = 0.0
+	var headYawDelta = 0.0
+	var pitchDelta = 0.0
 
-    public static final int FLAG_HAS_X = 0b1;
-    public static final int FLAG_HAS_Y = 0b10;
-    public static final int FLAG_HAS_Z = 0b100;
-    public static final int FLAG_HAS_YAW = 0b1000;
-    public static final int FLAG_HAS_HEAD_YAW = 0b10000;
-    public static final int FLAG_HAS_PITCH = 0b100000;
+	@Override
+	override fun pid(): Byte {
+		return NETWORK_ID
+	}
 
-    public int flags = 0;
-    public int xDelta = 0;
-    public int yDelta = 0;
-    public int zDelta = 0;
-    public double yawDelta = 0;
-    public double headYawDelta = 0;
-    public double pitchDelta = 0;
+	@Override
+	override fun decode() {
+		flags = this.getByte()
+		xDelta = getCoordinate(FLAG_HAS_X)
+		yDelta = getCoordinate(FLAG_HAS_Y)
+		zDelta = getCoordinate(FLAG_HAS_Z)
+		yawDelta = getRotation(FLAG_HAS_YAW)
+		headYawDelta = getRotation(FLAG_HAS_HEAD_YAW)
+		pitchDelta = getRotation(FLAG_HAS_PITCH)
+	}
 
-    @Override
-    public byte pid() {
-        return NETWORK_ID;
-    }
+	@Override
+	override fun encode() {
+		this.putByte(flags.toByte())
+		putCoordinate(FLAG_HAS_X, xDelta)
+		putCoordinate(FLAG_HAS_Y, yDelta)
+		putCoordinate(FLAG_HAS_Z, zDelta)
+		putRotation(FLAG_HAS_YAW, yawDelta)
+		putRotation(FLAG_HAS_HEAD_YAW, headYawDelta)
+		putRotation(FLAG_HAS_PITCH, pitchDelta)
+	}
 
-    @Override
-    public void decode() {
-        this.flags = this.getByte();
-        this.xDelta = getCoordinate(FLAG_HAS_X);
-        this.yDelta = getCoordinate(FLAG_HAS_Y);
-        this.zDelta = getCoordinate(FLAG_HAS_Z);
-        this.yawDelta = getRotation(FLAG_HAS_YAW);
-        this.headYawDelta = getRotation(FLAG_HAS_HEAD_YAW);
-        this.pitchDelta = getRotation(FLAG_HAS_PITCH);
-    }
+	private fun getCoordinate(flag: Int): Int {
+		return if (flags and flag != 0) {
+			this.getVarInt()
+		} else 0
+	}
 
-    @Override
-    public void encode() {
-        this.putByte((byte) flags);
-        putCoordinate(FLAG_HAS_X, this.xDelta);
-        putCoordinate(FLAG_HAS_Y, this.yDelta);
-        putCoordinate(FLAG_HAS_Z, this.zDelta);
-        putRotation(FLAG_HAS_YAW, this.yawDelta);
-        putRotation(FLAG_HAS_HEAD_YAW, this.headYawDelta);
-        putRotation(FLAG_HAS_PITCH, this.pitchDelta);
-    }
+	private fun getRotation(flag: Int): Double {
+		return if (flags and flag != 0) {
+			this.getByte() * (360.0 / 256.0)
+		} else 0.0
+	}
 
-    private int getCoordinate(int flag) {
-        if ((flags & flag) != 0) {
-            return this.getVarInt();
-        }
-        return 0;
-    }
+	private fun putCoordinate(flag: Int, value: Int) {
+		if (flags and flag != 0) {
+			this.putVarInt(value)
+		}
+	}
 
-    private double getRotation(int flag) {
-        if ((flags & flag) != 0) {
-            return this.getByte() * (360d / 256d);
-        }
-        return 0d;
-    }
+	private fun putRotation(flag: Int, value: Double) {
+		if (flags and flag != 0) {
+			this.putByte((value / (360.0 / 256.0)).toByte())
+		}
+	}
 
-    private void putCoordinate(int flag, int value) {
-        if ((flags & flag) != 0) {
-            this.putVarInt(value);
-        }
-    }
-
-    private void putRotation(int flag, double value) {
-        if ((flags & flag) != 0) {
-            this.putByte((byte) (value / (360d / 256d)));
-        }
-    }
+	companion object {
+		val NETWORK_ID: Byte = ProtocolInfo.MOVE_ENTITY_DELTA_PACKET
+		const val FLAG_HAS_X = 1
+		const val FLAG_HAS_Y = 2
+		const val FLAG_HAS_Z = 4
+		const val FLAG_HAS_YAW = 8
+		const val FLAG_HAS_HEAD_YAW = 16
+		const val FLAG_HAS_PITCH = 32
+	}
 }

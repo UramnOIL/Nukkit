@@ -1,25 +1,28 @@
-package cn.nukkit.network.protocol;
+package cn.nukkit.network.protocol
 
-import lombok.ToString;
+import lombok.ToString
+import kotlin.jvm.Volatile
+import kotlin.jvm.Throws
+import cn.nukkit.network.protocol.types.CommandOriginData.Origin
+import CommandOriginData.Origin
 
 @ToString
-public class GUIDataPickItemPacket extends DataPacket {
+class GUIDataPickItemPacket : DataPacket() {
+	var hotbarSlot = 0
 
-    public int hotbarSlot;
+	@Override
+	override fun pid(): Byte {
+		return ProtocolInfo.GUI_DATA_PICK_ITEM_PACKET
+	}
 
-    @Override
-    public byte pid() {
-        return ProtocolInfo.GUI_DATA_PICK_ITEM_PACKET;
-    }
+	@Override
+	override fun encode() {
+		this.reset()
+		this.putLInt(hotbarSlot)
+	}
 
-    @Override
-    public void encode() {
-        this.reset();
-        this.putLInt(this.hotbarSlot);
-    }
-
-    @Override
-    public void decode() {
-        this.hotbarSlot = this.getLInt();
-    }
+	@Override
+	override fun decode() {
+		hotbarSlot = this.getLInt()
+	}
 }

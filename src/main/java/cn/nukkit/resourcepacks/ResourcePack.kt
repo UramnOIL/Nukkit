@@ -1,17 +1,12 @@
-package cn.nukkit.resourcepacks;
+package cn.nukkit.resourcepacks
 
-import java.util.UUID;
+import java.util.*
 
-public interface ResourcePack {
-    String getPackName();
-
-    UUID getPackId();
-
-    String getPackVersion();
-
-    int getPackSize();
-
-    byte[] getSha256();
-
-    byte[] getPackChunk(int off, int len);
+interface ResourcePack {
+	val packName: String?
+	val packId: UUID?
+	val packVersion: String
+	val packSize: Int
+	val sha256: ByteArray?
+	fun getPackChunk(off: Int, len: Int): ByteArray
 }

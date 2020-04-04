@@ -1,28 +1,28 @@
-package cn.nukkit.utils;
+package cn.nukkit.utils
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Optional;
-import java.util.UUID;
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.util.*
 
-public interface PlayerDataSerializer {
+interface PlayerDataSerializer {
+	/**
+	 * Reads player data from [InputStream] if the file exists otherwise it will create the default data.
+	 *
+	 * @param name name of player or [UUID] as [String]
+	 * @param uuid uuid of player. Could be null if name is used.
+	 * @return [InputStream] if the player data exists
+	 */
+	@Throws(IOException::class)
+	fun read(name: String?, uuid: UUID?): Optional<InputStream?>?
 
-    /**
-     * Reads player data from {@link InputStream} if the file exists otherwise it will create the default data.
-     *
-     * @param name name of player or {@link UUID} as {@link String}
-     * @param uuid uuid of player. Could be null if name is used.
-     * @return {@link InputStream} if the player data exists
-     */
-    Optional<InputStream> read(String name, UUID uuid) throws IOException;
-
-    /**
-     * Writes player data to given {@link OutputStream}.
-     *
-     * @param name name of player or {@link UUID} as {@link String}
-     * @param uuid uuid of player. Could be null if name is used.
-     * @return stream to write player data
-     */
-    OutputStream write(String name, UUID uuid) throws IOException;
+	/**
+	 * Writes player data to given [OutputStream].
+	 *
+	 * @param name name of player or [UUID] as [String]
+	 * @param uuid uuid of player. Could be null if name is used.
+	 * @return stream to write player data
+	 */
+	@Throws(IOException::class)
+	fun write(name: String?, uuid: UUID?): OutputStream?
 }
